@@ -1,12 +1,12 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Users, FileText, LogOut, Bell, Search, Wifi, ChevronDown, ChevronRight, UserCheck, Upload, GraduationCap } from 'lucide-react';
-import { ModeToggle } from '@/components/mode-toggle';
+import { ModeToggle } from '@/components/common/mode-toggle';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import toast from 'react-hot-toast';
 import { useState } from 'react';
-import apiService from '@/utils/apiService';
+import apiService from '@/services/apiService';
 
 const Sidebar = () => {
     const location = useLocation();
@@ -15,13 +15,13 @@ const Sidebar = () => {
 
     const navItems = [
         { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-        { href: "/attendance", label: "Attendance Logs", icon: FileText },
+        { href: "/dashboard/attendance", label: "Attendance Logs", icon: FileText },
     ];
 
     const studentsSubMenu = [
-        { href: "/students", label: "Profile View", icon: UserCheck },
-        { href: "/bulk-import", label: "Bulk Import", icon: Upload },
-        { href: "/classes", label: "Classes", icon: GraduationCap },
+        { href: "/dashboard/students", label: "Profile View", icon: UserCheck },
+        { href: "/dashboard/students/bulk-import", label: "Bulk Import", icon: Upload },
+        { href: "/dashboard/students/classes", label: "Classes", icon: GraduationCap },
     ];
 
     const handleLogout = async () => {
@@ -145,11 +145,11 @@ const TopBar = () => {
     const navigate = useNavigate();
 
     const handleNotifications = () => {
-        navigate('/notifications');
+        navigate('/dashboard/notifications');
     };
 
     const handleWhatsAppAlerts = () => {
-        navigate('/notifications');
+        navigate('/dashboard/notifications');
     };
 
     return (

@@ -3,31 +3,66 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const mongoose = require('mongoose');
 
+// Load environment variables
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Import Routes
+const authRoutes = require('./routes/auth/authRoutes');
+
 // Middleware
-app.use(cors());
+app.use(cors({
+    origin: 'http://localhost:5173', // Vite dev server
+    credentials: true
+}));
 app.use(express.json());
 
-// Routes Placeholder
+// Routes
 app.get('/', (req, res) => {
-    res.send('IoT Biometric Attendance System Server is running');
+    res.json({
+        message: 'IoT Biometric Attendance System Server is running',
+        status: 'OK',
+        timestamp: new Date().toISOString()
+    });
 });
 
-// Database Connection Placeholder
+// Authentication routes
+app.use('/api/auth', authRoutes);
+
+// Database Connection
 const connectDB = async () => {
     try {
-        // await mongoose.connect(process.env.MONGO_URI);
-        console.log('MongoDB connection placeholder');
+        if (process.env.MONGODB_URI) {
+            await mongoose.connect(process.env.MONGODB_URI);
+            console.log('MongoDB Connected Successfully');
+        } else {
+            console.log('MongoDB URI not provided - running without database');
+        }
     } catch (error) {
-        console.log(error);
+        console.error('MongoDB connection error:', error);
+        process.exit(1);
     }
-}
+};
+
+// Connect to database
 connectDB();
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).json({
+        success: false,
+        message: 'Something went wrong!'
+    });
+});
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
+    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log('Authentication endpoints:');
+    console.log('- POST /api/auth/login');
+    console.log('- POST /api/auth/logout');
+    console.log('- GET /api/auth/verify');
 });

@@ -10,6 +10,7 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Import Routes
+import brokerService from './services/mqtt/brokerService.js';
 import authRoutes from './routes/auth/authRoutes.js';
 
 // Middleware
@@ -48,6 +49,9 @@ const connectDB = async () => {
 
 // Connect to database
 connectDB();
+
+// Start MQTT Broker
+brokerService.startBroker();
 
 // Error handling middleware
 app.use((err, req, res, next) => {

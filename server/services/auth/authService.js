@@ -1,5 +1,5 @@
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 
 class AuthService {
     constructor() {
@@ -81,4 +81,4 @@ class AuthService {
     }
 }
 
-module.exports = new AuthService();
+export default new AuthService();

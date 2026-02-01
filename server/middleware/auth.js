@@ -1,4 +1,4 @@
-const authService = require('../services/auth/authService');
+import authService from '../services/auth/authService.js';
 
 /**
  * Middleware to verify JWT token
@@ -6,7 +6,7 @@ const authService = require('../services/auth/authService');
  * @param {*} res 
  * @param {*} next 
  */
-const authenticateToken = (req, res, next) => {
+export const authenticateToken = (req, res, next) => {
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -31,8 +31,4 @@ const authenticateToken = (req, res, next) => {
             message: 'Invalid or expired token'
         });
     }
-};
-
-module.exports = {
-    authenticateToken
 };

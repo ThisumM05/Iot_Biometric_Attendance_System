@@ -1,4 +1,4 @@
-const authService = require('../../services/auth/authService');
+import authService from '../../services/auth/authService.js';
 
 class AuthController {
     /**
@@ -109,4 +109,4 @@ class AuthController {
     }
 }
 
-module.exports = new AuthController();
+export default new AuthController();

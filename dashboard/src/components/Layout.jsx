@@ -18,6 +18,12 @@ const Sidebar = () => {
         { href: "/attendance", label: "Attendance Logs", icon: FileText },
     ];
 
+    // New Biometric Section
+    const biometricMenu = [
+        { href: "/users", label: "User Management", icon: Users },
+        { href: "/attendance", label: "Realtime Monitor", icon: FileText },
+    ];
+
     const studentsSubMenu = [
         { href: "/students", label: "Profile View", icon: UserCheck },
         { href: "/bulk-import", label: "Bulk Import", icon: Upload },
@@ -70,7 +76,32 @@ const Sidebar = () => {
                         </Link>
                     )
                 })}
-                
+
+                <div className="pt-2 pb-2">
+                    <p className="px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                        Biometrics
+                    </p>
+                    {biometricMenu.map((item) => {
+                        const Icon = item.icon;
+                        const isActive = location.pathname === item.href;
+
+                        return (
+                            <Link key={item.href} to={item.href}>
+                                <Button
+                                    variant={isActive ? "secondary" : "ghost"}
+                                    className={cn(
+                                        "w-full justify-start gap-3 mb-1",
+                                        isActive && "bg-primary/10 text-primary font-semibold"
+                                    )}
+                                >
+                                    <Icon className="h-4 w-4" />
+                                    {item.label}
+                                </Button>
+                            </Link>
+                        )
+                    })}
+                </div>
+
                 {/* Students Menu with Dropdown */}
                 <div className="space-y-1">
                     <Button
@@ -89,13 +120,13 @@ const Sidebar = () => {
                             <ChevronRight className="h-4 w-4" />
                         )}
                     </Button>
-                    
+
                     {studentsExpanded && (
                         <div className="ml-6 space-y-1">
                             {studentsSubMenu.map((subItem) => {
                                 const SubIcon = subItem.icon;
                                 const isSubActive = location.pathname === subItem.href;
-                                
+
                                 return (
                                     <Link key={subItem.href} to={subItem.href}>
                                         <Button
@@ -171,30 +202,30 @@ const TopBar = () => {
                     <Wifi className="h-4 w-4 text-green-500" />
                     <span className="text-xs font-medium text-green-600 dark:text-green-400">IOT CONNECTED</span>
                 </div>
-                
+
                 {/* Notifications */}
-                <Button 
-                    variant="ghost" 
-                    size="icon" 
+                <Button
+                    variant="ghost"
+                    size="icon"
                     className="relative text-muted-foreground hover:text-foreground"
                     onClick={handleNotifications}
                 >
                     <Bell className="h-5 w-5" />
                     <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full text-[10px] text-white flex items-center justify-center">3</span>
                 </Button>
-                
+
                 {/* WhatsApp Alerts */}
-                <Button 
-                    variant="outline" 
-                    size="sm" 
+                <Button
+                    variant="outline"
+                    size="sm"
                     className="bg-green-500 hover:bg-green-600 text-white border-green-500 hover:border-green-600"
                     onClick={handleWhatsAppAlerts}
                 >
                     WhatsApp Alerts
                 </Button>
-                
+
                 <ModeToggle />
-                
+
                 {/* User Profile */}
                 <Avatar className="h-8 w-8 border-2 border-primary/20">
                     <AvatarImage src="/placeholder-avatar.jpg" />

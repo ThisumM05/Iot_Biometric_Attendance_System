@@ -110,4 +110,18 @@
   .animation-delay-300 {
     animation-delay: 300ms;
   }
+
+  /* Professional Slim Scrollbar - Global Application */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/20 rounded-full hover:bg-muted-foreground/40 transition-colors;
+  }
 }

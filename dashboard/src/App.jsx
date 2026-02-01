@@ -16,6 +16,8 @@ const BulkImport = lazy(() => import('./pages/BulkImport'));
 const Classes = lazy(() => import('./pages/Classes'));
 const Notifications = lazy(() => import('./pages/Notifications'));
 const EditProfile = lazy(() => import('./pages/EditProfile'));
+const BiometricUsers = lazy(() => import('./pages/BiometricUsers'));
+const RealtimeAttendance = lazy(() => import('./pages/RealtimeAttendance'));
 
 // Artificial delay for demonstration purposes (Optional - remove in production)
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -48,11 +50,13 @@ function App() {
                 <Route path="students/:id/edit" element={<EditProfile />} />
                 <Route path="bulk-import" element={<BulkImport />} />
                 <Route path="classes" element={<Classes />} />
+                <Route path="users" element={<BiometricUsers />} />
+                <Route path="attendance-realtime" element={<RealtimeAttendance />} />
                 <Route path="notifications" element={<Notifications />} />
               </Route>
             </Routes>
           </Suspense>
-          <Toaster 
+          <Toaster
             position="top-right"
             toastOptions={{
               duration: 4000,

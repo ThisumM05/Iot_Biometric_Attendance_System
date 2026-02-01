@@ -10,8 +10,11 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Import Routes
-import brokerService from './services/mqtt/brokerService.js';
+import rabbitMQService from './services/rabbitmq/rabbitMQService.js';
 import authRoutes from './routes/auth/authRoutes.js';
+import userRoutes from './routes/users/userRoutes.js';
+import attendanceRoutes from './routes/attendance/attendanceRoutes.js';
+import settingsRoutes from './routes/settings/settingsRoutes.js';
 
 // Middleware
 app.use(cors({
@@ -31,6 +34,12 @@ app.get('/', (req, res) => {
 
 // Authentication routes
 app.use('/api/auth', authRoutes);
+// User routes
+app.use('/api/users', userRoutes);
+// Attendance routes
+app.use('/api/attendance', attendanceRoutes);
+// Settings routes
+app.use('/api/settings', settingsRoutes);
 
 // Database Connection
 const connectDB = async () => {
@@ -50,8 +59,24 @@ const connectDB = async () => {
 // Connect to database
 connectDB();
 
-// Start MQTT Broker
-brokerService.startBroker();
+// Start RabbitMQ Service
+rabbitMQService.connect();
+
+import { createServer } from 'http';
+import { Server } from 'socket.io';
+
+// Create HTTP server needed for Socket.io
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
+    cors: {
+        origin: process.env.DASHBOARD_URL,
+        methods: ["GET", "POST"],
+        credentials: true
+    }
+});
+
+// Pass Socket.io to RabbitMQ Service
+rabbitMQService.setSocketIo(io);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -62,7 +87,7 @@ app.use((err, req, res, next) => {
     });
 });
 
-app.listen(PORT, () => {
+httpServer.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
     console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
 });

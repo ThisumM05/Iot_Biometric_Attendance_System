@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Search, Filter, Download, Calendar, ChevronLeft, ChevronRight, MoreVertical } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, Filter, Download, Calendar, ChevronLeft, ChevronRight, MoreVertical, Settings } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,148 +12,168 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-
-// Mock data for attendance logs
-const attendanceData = [
-  {
-    id: 'STU-8821',
-    name: 'John Doe',
-    entryTime: 'Oct 31, 08:00 AM',
-    exitTime: 'Oct 31, 04:15 PM',
-    duration: '8h 15m',
-    status: 'PRESENT',
-    avatar: 'JD'
-  },
-  {
-    id: 'STU-4102',
-    name: 'Alice Smith',
-    entryTime: 'Oct 31, 08:45 AM',
-    exitTime: 'Oct 31, 04:00 PM',
-    duration: '7h 15m',
-    status: 'LATE',
-    avatar: 'AS'
-  },
-  {
-    id: 'STU-2883',
-    name: 'Michael Jordan',
-    entryTime: 'Oct 31, 07:55 AM',
-    exitTime: 'Oct 31, 03:30 PM',
-    duration: '7h 35m',
-    status: 'PRESENT',
-    avatar: 'MJ'
-  },
-  {
-    id: 'STU-7591',
-    name: 'Sarah Williams',
-    entryTime: '---',
-    exitTime: '---',
-    duration: '---',
-    status: 'ABSENT',
-    avatar: 'SW'
-  },
-  {
-    id: 'STU-4416',
-    name: 'Robert Lee',
-    entryTime: 'Oct 31, 08:02 AM',
-    exitTime: 'Oct 31, 04:30 PM',
-    duration: '8h 28m',
-    status: 'PRESENT',
-    avatar: 'RL'
-  }
-];
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import axios from 'axios';
+import { toast } from 'react-hot-toast';
 
 const AttendanceLogs = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [dateRange, setDateRange] = useState('Oct 24, 2023 - Oct 31, 2023');
+  const [attendanceData, setAttendanceData] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const filteredData = attendanceData.filter(student =>
-    student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    student.id.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Settings State
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [settings, setSettings] = useState({ shiftStart: '08:00', classEnd: '10:30', lateThreshold: 15 });
 
-  const totalPages = 12; // Mock pagination
-  const startResult = (currentPage - 1) * 5 + 1;
-  const endResult = Math.min(currentPage * 5, 124);
+  const fetchAttendance = async () => {
+    try {
+      const response = await axios.get('http://localhost:5000/api/attendance');
+      if (response.data.success) {
+        setAttendanceData(response.data.data);
+      }
+    } catch (error) {
+      console.error("Error fetching attendance:", error);
+      toast.error("Failed to load attendance logs");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchSettings = async () => {
+    try {
+      const response = await axios.get('http://localhost:5000/api/settings');
+      if (response.data.success) {
+        setSettings({
+          shiftStart: response.data.data.SHIFT_START_TIME || '08:00',
+          classEnd: response.data.data.CLASS_END_TIME || '10:30',
+          lateThreshold: response.data.data.LATE_THRESHOLD || 15
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching settings:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchAttendance();
+    fetchSettings();
+
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(fetchAttendance, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleSaveSettings = async () => {
+    try {
+      await axios.put('http://localhost:5000/api/settings', {
+        shiftStart: settings.shiftStart,
+        classEnd: settings.classEnd,
+        lateThreshold: settings.lateThreshold
+      });
+      toast.success("Settings updated successfully");
+      setIsSettingsOpen(false);
+      fetchAttendance(); // Refresh to reflect potential status changes if logic was re-run (backend dependent)
+    } catch (error) {
+      toast.error("Failed to update settings");
+    }
+  };
+
+  const filteredData = attendanceData.filter(record => {
+    const studentName = record.user?.username || 'Unknown';
+    const studentId = record.user?.fingerprintId?.toString() || '';
+    return studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      studentId.includes(searchTerm);
+  });
+
+  // Pagination Logic
+  const itemsPerPage = 10;
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const startResult = (currentPage - 1) * itemsPerPage + 1;
+  const endResult = Math.min(currentPage * itemsPerPage, filteredData.length);
+  const currentData = filteredData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  const formatTime = (dateStr) => {
+    if (!dateStr) return '---';
+    return new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const formatDuration = (minutes) => {
+    if (!minutes) return '---';
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    return `${h}h ${m}m`;
+  };
 
   const getStatusBadge = (status) => {
     switch (status) {
       case 'PRESENT':
-        return <Badge variant="present" className="font-medium">PRESENT</Badge>;
+        return <Badge className="bg-green-100 text-green-700 hover:bg-green-200 border-green-200">PRESENT</Badge>;
       case 'LATE':
-        return <Badge variant="warning" className="font-medium">LATE</Badge>;
+        return <Badge className="bg-yellow-100 text-yellow-700 hover:bg-yellow-200 border-yellow-200">LATE</Badge>;
       case 'ABSENT':
-        return <Badge variant="absent" className="font-medium">ABSENT</Badge>;
+        return <Badge className="bg-red-100 text-red-700 hover:bg-red-200 border-red-200">ABSENT</Badge>;
+      case 'LEFT_EARLY':
+        return <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-200 border-orange-200">LEFT EARLY</Badge>;
       default:
         return <Badge variant="secondary">{status}</Badge>;
     }
   };
 
-  const renderPageNumbers = () => {
-    const pages = [];
-    
-    // Always show page 1
-    pages.push(
-      <Button
-        key={1}
-        variant={currentPage === 1 ? "default" : "ghost"}
-        size="sm"
-        onClick={() => setCurrentPage(1)}
-        className="w-8 h-8 p-0"
-      >
-        1
-      </Button>
-    );
-
-    // Show current page and surrounding pages
-    if (currentPage > 3) {
-      pages.push(<span key="ellipsis1" className="px-2">...</span>);
-    }
-
-    for (let i = Math.max(2, currentPage - 1); i <= Math.min(currentPage + 1, totalPages - 1); i++) {
-      if (i !== 1 && i !== totalPages) {
-        pages.push(
-          <Button
-            key={i}
-            variant={currentPage === i ? "default" : "ghost"}
-            size="sm"
-            onClick={() => setCurrentPage(i)}
-            className="w-8 h-8 p-0"
-          >
-            {i}
-          </Button>
-        );
-      }
-    }
-
-    // Show ellipsis and last page
-    if (currentPage < totalPages - 2) {
-      pages.push(<span key="ellipsis2" className="px-2">...</span>);
-    }
-
-    if (totalPages > 1) {
-      pages.push(
-        <Button
-          key={totalPages}
-          variant={currentPage === totalPages ? "default" : "ghost"}
-          size="sm"
-          onClick={() => setCurrentPage(totalPages)}
-          className="w-8 h-8 p-0"
-        >
-          {totalPages}
-        </Button>
-      );
-    }
-
-    return pages;
-  };
-
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Attendance Logs</h1>
-        <p className="text-muted-foreground">Real-time biometric sync data for student entries and exits.</p>
+      <div className="flex justify-between items-start">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Attendance Logs</h1>
+          <p className="text-muted-foreground">Real-time daily sessions and status.</p>
+        </div>
+        <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+          <DialogTrigger asChild>
+            <Button variant="outline">
+              <Settings className="mr-2 h-4 w-4" />
+              Settings
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Attendance Settings</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Class Start Time</Label>
+                <Input
+                  type="time"
+                  value={settings.shiftStart}
+                  onChange={(e) => setSettings({ ...settings, shiftStart: e.target.value })}
+                />
+                <p className="text-xs text-muted-foreground">Time when the class session begins.</p>
+              </div>
+              <div className="space-y-2">
+                <Label>Class End Time</Label>
+                <Input
+                  type="time"
+                  value={settings.classEnd}
+                  onChange={(e) => setSettings({ ...settings, classEnd: e.target.value })}
+                />
+                <p className="text-xs text-muted-foreground">Time when the class session ends. Exiting before this is "Left Early".</p>
+              </div>
+              <div className="space-y-2">
+                <Label>Late Threshold (Minutes)</Label>
+                <Input
+                  type="number"
+                  value={settings.lateThreshold}
+                  onChange={(e) => setSettings({ ...settings, lateThreshold: parseInt(e.target.value) })}
+                />
+                <p className="text-xs text-muted-foreground">Grace period before marking as LATE.</p>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button onClick={handleSaveSettings}>Save Changes</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Filters and Search */}
@@ -163,20 +183,10 @@ const AttendanceLogs = () => {
           <div className="relative max-w-md">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search by Student Name or ID..."
+              placeholder="Search by Name or Fingerprint ID..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10 bg-background"
-            />
-          </div>
-
-          {/* Date Range */}
-          <div className="relative">
-            <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              value={dateRange}
-              readOnly
-              className="pl-10 w-64 bg-background cursor-pointer"
             />
           </div>
         </div>
@@ -184,7 +194,7 @@ const AttendanceLogs = () => {
         {/* Apply Filters Button */}
         <Button className="bg-primary hover:bg-primary/90">
           <Filter className="h-4 w-4 mr-2" />
-          Apply Filters
+          Recursive Refresh
         </Button>
       </div>
 
@@ -195,87 +205,74 @@ const AttendanceLogs = () => {
             <TableHeader>
               <TableRow className="hover:bg-transparent border-b">
                 <TableHead className="font-semibold">STUDENT NAME</TableHead>
+                <TableHead className="font-semibold">DATE</TableHead>
                 <TableHead className="font-semibold">ENTRY TIME</TableHead>
                 <TableHead className="font-semibold">EXIT TIME</TableHead>
                 <TableHead className="font-semibold">DURATION</TableHead>
                 <TableHead className="font-semibold">STATUS</TableHead>
-                <TableHead className="font-semibold text-center">ACTIONS</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredData.map((student, index) => (
-                <TableRow key={student.id} className="hover:bg-muted/50 transition-colors">
-                  <TableCell className="py-4">
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src={`/placeholder-student-${index + 1}.jpg`} />
-                        <AvatarFallback className="text-xs bg-primary text-primary-foreground">
-                          {student.avatar}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-medium">{student.name}</p>
-                        <p className="text-sm text-muted-foreground">ID: {student.id}</p>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-medium">{student.entryTime}</TableCell>
-                  <TableCell className="font-medium">{student.exitTime}</TableCell>
-                  <TableCell className="font-medium">{student.duration}</TableCell>
-                  <TableCell>{getStatusBadge(student.status)}</TableCell>
-                  <TableCell className="text-center">
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Loading attendance data...</TableCell>
                 </TableRow>
-              ))}
+              ) : currentData.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No attendance records found.</TableCell>
+                </TableRow>
+              ) : (
+                currentData.map((record) => (
+                  <TableRow key={record._id} className="hover:bg-muted/50 transition-colors">
+                    <TableCell className="py-4">
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-8 w-8">
+                          <AvatarFallback className="text-xs bg-primary text-primary-foreground">
+                            {record.user?.username?.substring(0, 2).toUpperCase() || 'NA'}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium">{record.user?.username || 'Unknown User'}</p>
+                          <p className="text-sm text-muted-foreground">ID: {record.user?.fingerprintId}</p>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-medium">{record.date}</TableCell>
+                    <TableCell className="font-medium">{formatTime(record.clockIn)}</TableCell>
+                    <TableCell className="font-medium">{record.clockOut === record.clockIn ? '---' : formatTime(record.clockOut)}</TableCell>
+                    <TableCell className="font-medium">{formatDuration(record.duration)}</TableCell>
+                    <TableCell>{getStatusBadge(record.status)}</TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </div>
 
         {/* Pagination Footer */}
         <div className="flex items-center justify-between px-6 py-4 border-t bg-muted/20">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span>Last synced: Just now</span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground">
-              Showing {startResult} to {endResult} of 124 results
-            </span>
-            
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                disabled={currentPage === 1}
-                className="h-8 w-8 p-0"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-
-              <div className="flex items-center gap-1">
-                {renderPageNumbers()}
-              </div>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                disabled={currentPage === totalPages}
-                className="h-8 w-8 p-0"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-
           <div className="text-sm text-muted-foreground">
-            Displaying results for all classrooms
+            Showing {startResult} to {endResult} of {filteredData.length} results
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+              disabled={currentPage === 1}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-sm font-medium">Page {currentPage} of {Math.max(1, totalPages)}</span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+              disabled={currentPage >= totalPages || totalPages === 0}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
           </div>
         </div>
       </div>

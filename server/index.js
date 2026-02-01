@@ -14,7 +14,7 @@ const authRoutes = require('./routes/auth/authRoutes');
 
 // Middleware
 app.use(cors({
-    origin: 'http://localhost:5173', // Vite dev server
+    origin: process.env.DASHBOARD_URL, // Vite dev server
     credentials: true
 }));
 app.use(express.json());
@@ -61,8 +61,4 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
     console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log('Authentication endpoints:');
-    console.log('- POST /api/auth/login');
-    console.log('- POST /api/auth/logout');
-    console.log('- GET /api/auth/verify');
 });

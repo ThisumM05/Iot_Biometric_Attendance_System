@@ -21,7 +21,7 @@ const Sidebar = () => {
     // New Biometric Section
     const biometricMenu = [
         { href: "/users", label: "User Management", icon: Users },
-        { href: "/attendance", label: "Realtime Monitor", icon: FileText },
+        { href: "/attendance-realtime", label: "Realtime Monitor", icon: FileText },
     ];
 
     const studentsSubMenu = [
@@ -152,10 +152,10 @@ const Sidebar = () => {
                 <div className="flex items-center gap-3 mb-3">
                     <Avatar className="h-8 w-8">
                         <AvatarImage src="/placeholder-avatar.jpg" />
-                        <AvatarFallback className="bg-primary text-primary-foreground text-sm">AR</AvatarFallback>
+                        <AvatarFallback className="bg-primary text-primary-foreground text-sm">S</AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">Alex Rivera</p>
+                        <p className="text-sm font-medium truncate">Sudeera</p>
                         <p className="text-xs text-muted-foreground truncate">System Admin</p>
                     </div>
                 </div>
@@ -229,7 +229,7 @@ const TopBar = () => {
                 {/* User Profile */}
                 <Avatar className="h-8 w-8 border-2 border-primary/20">
                     <AvatarImage src="/placeholder-avatar.jpg" />
-                    <AvatarFallback className="bg-primary text-primary-foreground text-sm">AR</AvatarFallback>
+                    <AvatarFallback className="bg-primary text-primary-foreground text-sm">S</AvatarFallback>
                 </Avatar>
             </div>
         </div>

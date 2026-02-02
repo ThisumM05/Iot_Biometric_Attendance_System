@@ -23,6 +23,21 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// Logging middleware for all requests
+app.use((req, res, next) => {
+    const timestamp = new Date().toISOString();
+    const method = req.method;
+    const url = req.originalUrl;
+    const ip = req.ip || req.connection.remoteAddress || 'Unknown';
+
+    // Only log auth-related endpoints to avoid spam
+    if (url.includes('/api/auth/') || url.includes('/api/rabbitmq/')) {
+        console.log(`${method} ${url} | ${timestamp} | ${ip}`);
+    }
+
+    next();
+});
+
 // Routes
 app.get('/', (req, res) => {
     res.json({
@@ -51,8 +66,11 @@ const connectDB = async () => {
             console.log('MongoDB URI not provided - running without database');
         }
     } catch (error) {
-        console.error('MongoDB connection error:', error);
-        process.exit(1);
+        console.error('MongoDB connection error:', error.message);
+        console.log('Running server without database connection...');
+        console.log('To fix this:');
+        console.log('1. Install MongoDB: https://www.mongodb.com/try/download/community');
+        console.log('2. Or update MONGODB_URI in .env to a working connection string');
     }
 };
 

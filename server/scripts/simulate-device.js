@@ -73,18 +73,18 @@ async function simulateEnrollmentProcess(command) {
     await sleep(2000);
     publishEvent({ type: 'ENROLL_UPDATE', message: 'Place same finger again...', step: 3, totalSteps: 3, deviceId: 'SIM-001' });
 
-    // Step 4: Success
+    // Step 4: Success - Use timestamp-based ID instead of random
     await sleep(2000);
-    const fakeFingerprintId = Math.floor(Math.random() * 1000) + 1;
+    const fingerprintId = Date.now(); // Use timestamp for unique ID
     publishEvent({
         type: 'ENROLL_SUCCESS',
         payload: {
-            fingerprintId: fakeFingerprintId,
+            fingerprintId: fingerprintId,
             userId: userId
         },
         deviceId: 'SIM-001'
     });
-    console.log(`[✅ SIMULATION] Enrollment Complete. Assigned ID: ${fakeFingerprintId}`);
+    console.log(`[✅ SIMULATION] Enrollment Complete. Assigned ID: ${fingerprintId}`);
 }
 
 // Function merged into handleInput layout

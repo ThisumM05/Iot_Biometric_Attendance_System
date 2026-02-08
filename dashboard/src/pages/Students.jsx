@@ -15,68 +15,15 @@ import {
   TableRow,
 } from '@/components/ui/table';
 
-const mockStudents = [
-  {
-    id: 'STU-2023-001',
-    name: 'John Doe',
-    class: '10-A',
-    attendanceRate: 98.2,
-    daysPresent: '19/20',
-    status: 'Present',
-    lastSeen: 'Today, 08:00 AM',
-    biometricStatus: '2 Fingerprints Registered',
-    avatar: '/placeholder-avatar.jpg'
-  },
-  {
-    id: 'STU-2023-002',
-    name: 'Alice Smith',
-    class: '10-A',
-    attendanceRate: 95.5,
-    daysPresent: '19/20',
-    status: 'Late',
-    lastSeen: 'Today, 08:45 AM',
-    biometricStatus: '2 Fingerprints Registered',
-    avatar: '/placeholder-avatar.jpg'
-  },
-  {
-    id: 'STU-2023-003',
-    name: 'Michael Jordan',
-    class: '10-B',
-    attendanceRate: 97.8,
-    daysPresent: '18/20',
-    status: 'Present',
-    lastSeen: 'Today, 07:55 AM',
-    biometricStatus: '2 Fingerprints Registered',
-    avatar: '/placeholder-avatar.jpg'
-  },
-  {
-    id: 'STU-2023-004',
-    name: 'Sarah Williams',
-    class: '10-C',
-    attendanceRate: 85.0,
-    daysPresent: '17/20',
-    status: 'Absent',
-    lastSeen: 'Yesterday, 04:30 PM',
-    biometricStatus: '1 Fingerprint Registered',
-    avatar: '/placeholder-avatar.jpg'
-  },
-  {
-    id: 'STU-2023-005',
-    name: 'Robert Lee',
-    class: '10-A',
-    attendanceRate: 99.1,
-    daysPresent: '20/20',
-    status: 'Present',
-    lastSeen: 'Today, 08:02 AM',
-    biometricStatus: '2 Fingerprints Registered',
-    avatar: '/placeholder-avatar.jpg'
-  },
-];
+// Students data will be fetched from database
+// Currently empty until database connection is established
 
 export default function StudentProfileView() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedClass, setSelectedClass] = useState('All');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   const handleStudentClick = (studentId) => {
@@ -91,7 +38,7 @@ export default function StudentProfileView() {
     setIsAddModalOpen(false);
   };
 
-  const filteredStudents = mockStudents.filter(student => {
+  const filteredStudents = students.filter(student => {
     const matchesSearch = student.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                          student.id.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesClass = selectedClass === 'All' || student.class === selectedClass;
@@ -230,7 +177,7 @@ export default function StudentProfileView() {
       {/* Footer */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          Showing <span className="font-medium">{filteredStudents.length}</span> of {mockStudents.length} students
+          Showing <span className="font-medium">{filteredStudents.length}</span> of {students.length} students
         </p>
         <div className="text-sm text-muted-foreground">
           Last updated: Just now

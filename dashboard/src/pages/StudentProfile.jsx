@@ -8,130 +8,22 @@ import { Progress } from '@/components/ui/progress';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import NotifyParent from '@/components/NotifyParent';
 
-// Mock student database
-const studentsDatabase = {
-  'STU-2023-001': {
-    id: 'STU-2023-001',
-    name: 'John Doe',
-    class: '10-A',
-    status: 'PRESENT',
-    lastSeen: 'Today, 08:00 AM',
-    attendanceRate: 98.2,
-    daysPresent: '19/20',
-    parentContact: '+1 234 567 890',
-    email: 'john.doe@school.edu',
-    biometricStatus: '2 Fingerprints Registered',
-    address: '123 Main Street, City',
-    avatar: '/placeholder-avatar.jpg',
-    dateOfBirth: '2008-05-15',
-    enrollmentDate: '2023-08-01',
-    guardianName: 'Robert Doe',
-    guardianRelation: 'Father',
-    parentEmail: 'robert.doe@email.com'
-  },
-  'STU-2023-002': {
-    id: 'STU-2023-002',
-    name: 'Alice Smith',
-    class: '10-A',
-    status: 'LATE',
-    lastSeen: 'Today, 08:45 AM',
-    attendanceRate: 95.5,
-    daysPresent: '19/20',
-    parentContact: '+1 234 567 891',
-    email: 'alice.smith@school.edu',
-    biometricStatus: '2 Fingerprints Registered',
-    address: '456 Oak Avenue, City',
-    avatar: '/placeholder-avatar.jpg',
-    dateOfBirth: '2008-03-22',
-    enrollmentDate: '2023-08-01',
-    guardianName: 'Mary Smith',
-    guardianRelation: 'Mother',
-    parentEmail: 'mary.smith@email.com'
-  },
-  'STU-2023-003': {
-    id: 'STU-2023-003',
-    name: 'Michael Jordan',
-    class: '10-B',
-    status: 'PRESENT',
-    lastSeen: 'Today, 07:55 AM',
-    attendanceRate: 97.8,
-    daysPresent: '18/20',
-    parentContact: '+1 234 567 892',
-    email: 'michael.jordan@school.edu',
-    biometricStatus: '2 Fingerprints Registered',
-    address: '789 Pine Street, City',
-    avatar: '/placeholder-avatar.jpg',
-    dateOfBirth: '2008-07-10',
-    enrollmentDate: '2023-08-01',
-    guardianName: 'James Jordan',
-    guardianRelation: 'Father',
-    parentEmail: 'james.jordan@email.com'
-  },
-  'STU-2023-004': {
-    id: 'STU-2023-004',
-    name: 'Sarah Williams',
-    class: '10-C',
-    status: 'ABSENT',
-    lastSeen: 'Yesterday, 04:30 PM',
-    attendanceRate: 85.0,
-    daysPresent: '17/20',
-    parentContact: '+1 234 567 893',
-    email: 'sarah.williams@school.edu',
-    biometricStatus: '1 Fingerprint Registered',
-    address: '321 Elm Street, City',
-    avatar: '/placeholder-avatar.jpg',
-    dateOfBirth: '2008-11-08',
-    enrollmentDate: '2023-08-01',
-    guardianName: 'Jennifer Williams',
-    guardianRelation: 'Mother',
-    parentEmail: 'jennifer.williams@email.com'
-  },
-  'STU-2023-005': {
-    id: 'STU-2023-005',
-    name: 'Robert Lee',
-    class: '10-A',
-    status: 'PRESENT',
-    lastSeen: 'Today, 08:02 AM',
-    attendanceRate: 99.1,
-    daysPresent: '20/20',
-    parentContact: '+1 234 567 894',
-    email: 'robert.lee@school.edu',
-    biometricStatus: '2 Fingerprints Registered',
-    address: '654 Maple Drive, City',
-    avatar: '/placeholder-avatar.jpg',
-    dateOfBirth: '2008-01-30',
-    enrollmentDate: '2023-08-01',
-    guardianName: 'David Lee',
-    guardianRelation: 'Father',
-    parentEmail: 'david.lee@email.com'
-  }
-};
+// Student database will be fetched from API
+// Currently empty until database connection is established
 
-// Mock attendance records
-const recentRecords = [
-  { date: 'Oct 26, 08:00 AM', terminal: 'Terminal-A (Main Gate)', status: 'IN', type: 'entry' },
-  { date: 'Oct 25, 03:30 PM', terminal: 'Terminal-B (Exit)', status: 'OUT', type: 'exit' },
-  { date: 'Oct 25, 08:02 AM', terminal: 'Terminal-A (Main Gate)', status: 'IN', type: 'entry' },
-  { date: 'Oct 24, 03:25 PM', terminal: 'Terminal-B (Exit)', status: 'OUT', type: 'exit' },
-  { date: 'Oct 24, 07:58 AM', terminal: 'Terminal-A (Main Gate)', status: 'IN', type: 'entry' }
-];
+// Recent records will be fetched from database
 
-// Mock weekly trend data
-const weeklyTrendData = [
-  { day: 'MON', present: 100, absent: 0 },
-  { day: 'TUE', present: 100, absent: 0 },
-  { day: 'WED', present: 100, absent: 0 },
-  { day: 'THU', present: 100, absent: 0 },
-  { day: 'FRI', present: 100, absent: 0 },
-  { day: 'SAT', present: 100, absent: 0 },
-  { day: 'SUN', present: 0, absent: 100 }
-];
+// Weekly trend data will be fetched from database
 
 const StudentProfile = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   const [showNotifyModal, setShowNotifyModal] = useState(false);
+  const [studentData, setStudentData] = useState(null);
+  const [recentRecords, setRecentRecords] = useState([]);
+  const [weeklyTrendData, setWeeklyTrendData] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const handleEditProfile = () => {
     navigate(`/dashboard/students/${id}/edit`);
@@ -141,8 +33,15 @@ const StudentProfile = () => {
     setShowNotifyModal(true);
   };
 
-  // Get student data based on ID from URL params
-  const studentData = studentsDatabase[id];
+  // Show loading or not found message when no student data
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
+        <h2 className="text-2xl font-bold text-muted-foreground">Loading...</h2>
+        <p className="text-muted-foreground">Fetching student data...</p>
+      </div>
+    );
+  }
 
   // If student not found, show error message
   if (!studentData) {

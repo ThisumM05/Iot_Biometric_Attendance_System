@@ -12,49 +12,26 @@ import toast from 'react-hot-toast';
 const EditProfile = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-
-  // Mock data - same as StudentProfile
-  const studentsDatabase = {
-    'STU-2023-001': {
-      id: 'STU-2023-001',
-      name: 'John Doe',
-      class: '10-A',
-      rollNumber: '15',
-      dateOfBirth: '2008-05-15',
-      parentContact: '+1 (555) 123-4567',
-      parentEmail: 'john.parent@email.com',
-      address: '123 Main Street, Downtown, NY 10001',
-      emergencyContact: '+1 (555) 987-6543',
-      bloodGroup: 'A+',
-      allergies: 'None',
-      medicalConditions: 'None',
-      attendanceRate: 98.2,
-      daysPresent: '19/20',
-      biometricStatus: '2 Fingerprints Registered',
-      guardianName: 'Robert Doe',
-      guardianRelation: 'Father',
-      guardianOccupation: 'Software Engineer',
-      avatar: null
-    }
-  };
-
-  const studentData = studentsDatabase[id];
+  
+  // Student data will be fetched from database
+  const [studentData, setStudentData] = useState(null);
+  const [loading, setLoading] = useState(true);
   
   const [formData, setFormData] = useState({
-    name: studentData?.name || '',
-    class: studentData?.class || '',
-    rollNumber: studentData?.rollNumber || '',
-    dateOfBirth: studentData?.dateOfBirth || '',
-    parentContact: studentData?.parentContact || '',
-    parentEmail: studentData?.parentEmail || '',
-    address: studentData?.address || '',
-    emergencyContact: studentData?.emergencyContact || '',
-    bloodGroup: studentData?.bloodGroup || '',
-    allergies: studentData?.allergies || '',
-    medicalConditions: studentData?.medicalConditions || '',
-    guardianName: studentData?.guardianName || '',
-    guardianRelation: studentData?.guardianRelation || '',
-    guardianOccupation: studentData?.guardianOccupation || ''
+    name: '',
+    class: '',
+    rollNumber: '',
+    dateOfBirth: '',
+    parentContact: '',
+    parentEmail: '',
+    address: '',
+    emergencyContact: '',
+    bloodGroup: '',
+    allergies: '',
+    medicalConditions: '',
+    guardianName: '',
+    guardianRelation: '',
+    guardianOccupation: ''
   });
 
   const [isLoading, setIsLoading] = useState(false);
@@ -69,7 +46,7 @@ const EditProfile = () => {
   const handleSave = async () => {
     setIsLoading(true);
     try {
-      // Simulate API call
+      // TODO: Replace with actual API call to update student data
       await new Promise(resolve => setTimeout(resolve, 1500));
       
       toast.success('Student profile updated successfully!');
@@ -80,6 +57,15 @@ const EditProfile = () => {
       setIsLoading(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="text-center py-12">
+        <h2 className="text-2xl font-bold text-muted-foreground">Loading...</h2>
+        <p className="text-muted-foreground mt-2">Fetching student data...</p>
+      </div>
+    );
+  }
 
   if (!studentData) {
     return (

@@ -6,19 +6,23 @@ dotenv.config();
 
 class AuthService {
     constructor() {
-        this.adminUsername = process.env.ADMIN_USERNAME || 'admin';
-        this.adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+        // Fallback admin credentials (will be replaced by database authentication)
+        this.fallbackAdminUsername = process.env.ADMIN_USERNAME || 'admin';
+        this.fallbackAdminPassword = process.env.ADMIN_PASSWORD || 'admin123';
         this.jwtSecret = process.env.JWT_SECRET || 'default_secret';
     }
 
     /**
-     * Validate login credentials
+     * Validate login credentials (will be replaced with database query)
      * @param {string} username 
      * @param {string} password 
      * @returns {boolean}
      */
     validateCredentials(username, password) {
-        return username === this.adminUsername && password === this.adminPassword;
+        // TODO: Replace with database authentication
+        // This is a temporary fallback until database connection is established
+        console.log('[TEMP] Using fallback authentication - replace with database query');
+        return username === this.fallbackAdminUsername && password === this.fallbackAdminPassword;
     }
 
     /**

@@ -1,51 +1,17 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Users, Activity, UserCheck, AlertTriangle, TrendingUp, TrendingDown, Clock, MapPin } from 'lucide-react';
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
-// Mock data for charts
-const attendanceData = [
-  { time: '08:00', attendance: 120 },
-  { time: '09:00', attendance: 890 },
-  { time: '10:00', attendance: 1200 },
-  { time: '11:00', attendance: 1180 },
-  { time: '12:00', attendance: 1250 },
-  { time: '13:00', attendance: 1100 },
-  { time: '14:00', attendance: 1150 },
-  { time: '15:00', attendance: 1220 },
-  { time: '16:00', attendance: 980 },
-  { time: '17:00', attendance: 450 },
-  { time: '18:00', attendance: 200 },
-  { time: '19:00', attendance: 80 },
-  { time: '20:00', attendance: 30 }
-];
+// Attendance data will be fetched from database
+// Currently empty until database connection is established
 
-const peakTimesData = [
-  ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'],
-  [
-    [0, 0, 1, 2, 3, 4, 4],
-    [1, 2, 3, 4, 4, 3, 2],
-    [2, 3, 4, 4, 3, 2, 1],
-    [3, 4, 4, 3, 2, 1, 0],
-    [4, 4, 3, 2, 1, 0, 0],
-    [4, 3, 2, 1, 0, 0, 0]
-  ]
-];
+// Peak times data will be fetched from database
 
-const liveAttendance = [
-  { id: '#STU-8821', name: 'Alex Thompson', lastEntry: '08:14 AM', lastExit: '', status: 'IN' },
-  { id: '#STU-7752', name: 'Sarah Jenkins', lastEntry: '08:02 AM', lastExit: '05:45 PM', status: 'OUT' },
-  { id: '#STU-1294', name: 'Michael Chen', lastEntry: '08:30 AM', lastExit: '', status: 'IN' },
-];
+// Live attendance data will be fetched from database
 
-const whatsAppAlerts = [
-  { type: 'Sent', time: '10:24 AM', message: 'Alert sent to Alex T\'s parent: "Student entered school premises."', status: 'delivered' },
-  { type: 'Delivered', time: '10:22 AM', message: 'Alert sent to Sarah P\'s parent: "Student exited school premises."', status: 'delivered' },
-  { type: 'Failed', time: '10:20 AM', message: 'Connection error while messaging Michael C\'s parent. Retrying in 3 min...', status: 'failed' },
-  { type: 'Sent', time: '09:45 AM', message: 'Morning Summary sent to Principal Office (1,200 | 300 present)', status: 'delivered' },
-  { type: 'Delivered', time: '09:15 AM', message: 'Staff Entry alert: "Professor Susan arrived at Gate 2."', status: 'delivered' }
-];
+// WhatsApp alerts data will be fetched from database
 
 const StatCard = ({ title, value, icon: Icon, trend, trendUp, color = "default" }) => (
   <div className="p-6 rounded-xl border bg-card text-card-foreground shadow-sm hover:shadow-md transition-shadow">
@@ -67,40 +33,69 @@ const StatCard = ({ title, value, icon: Icon, trend, trendUp, color = "default" 
   </div>
 );
 
-const PeakTimesHeatmap = () => (
-  <div className="space-y-2">
-    <div className="flex justify-between text-xs text-muted-foreground mb-2">
-      <span>Low</span>
-      <span>High</span>
-    </div>
-    <div className="grid grid-cols-7 gap-1">
-      {peakTimesData[0].map((day, dayIndex) => (
-        <div key={dayIndex} className="text-center">
-          <div className="text-xs font-medium text-muted-foreground mb-1">{day}</div>
-          <div className="space-y-1">
-            {peakTimesData[1].map((row, rowIndex) => {
-              const intensity = row[dayIndex];
-              return (
-                <div
-                  key={rowIndex}
-                  className={`h-3 w-full rounded-sm ${
-                    intensity === 0 ? 'bg-muted' :
-                    intensity === 1 ? 'bg-blue-200 dark:bg-blue-900' :
-                    intensity === 2 ? 'bg-blue-300 dark:bg-blue-800' :
-                    intensity === 3 ? 'bg-blue-400 dark:bg-blue-700' :
-                    intensity === 4 ? 'bg-blue-500 dark:bg-blue-600' : 'bg-blue-600'
-                  }`}
-                />
-              );
-            })}
-          </div>
+const PeakTimesHeatmap = ({ peakTimesData }) => {
+  // Show empty state if no data
+  if (!peakTimesData || !peakTimesData[0] || !peakTimesData[1]) {
+    return (
+      <div className="space-y-2">
+        <div className="flex justify-between text-xs text-muted-foreground mb-2">
+          <span>Low</span>
+          <span>High</span>
         </div>
-      ))}
+        <div className="text-center py-8 text-muted-foreground">
+          <p>No peak times data available</p>
+        </div>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="space-y-2">
+      <div className="flex justify-between text-xs text-muted-foreground mb-2">
+        <span>Low</span>
+        <span>High</span>
+      </div>
+      <div className="grid grid-cols-7 gap-1">
+        {peakTimesData[0].map((day, dayIndex) => (
+          <div key={dayIndex} className="text-center">
+            <div className="text-xs font-medium text-muted-foreground mb-1">{day}</div>
+            <div className="space-y-1">
+              {peakTimesData[1].map((row, rowIndex) => {
+                const intensity = row[dayIndex];
+                return (
+                  <div
+                    key={rowIndex}
+                    className={`h-3 w-full rounded-sm ${
+                      intensity === 0 ? 'bg-muted' :
+                      intensity === 1 ? 'bg-blue-200 dark:bg-blue-900' :
+                      intensity === 2 ? 'bg-blue-300 dark:bg-blue-800' :
+                      intensity === 3 ? 'bg-blue-400 dark:bg-blue-700' :
+                      intensity === 4 ? 'bg-blue-500 dark:bg-blue-600' : 'bg-blue-600'
+                    }`}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const Home = () => {
+  const [attendanceData, setAttendanceData] = useState([]);
+  const [peakTimesData, setPeakTimesData] = useState([]);
+  const [liveAttendance, setLiveAttendance] = useState([]);
+  const [whatsAppAlerts, setWhatsAppAlerts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [dashboardStats, setDashboardStats] = useState({
+    totalEntries: 0,
+    totalExits: 0,
+    currentlyInside: 0,
+    alertsPending: 0
+  });
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -118,7 +113,7 @@ const Home = () => {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Total Entries"
-          value="1,284"
+          value={dashboardStats.totalEntries}
           icon={Users}
           trend="+12%"
           trendUp={true}
@@ -126,7 +121,7 @@ const Home = () => {
         />
         <StatCard
           title="Total Exits"
-          value="1,102"
+          value={dashboardStats.totalExits}
           icon={Activity}
           trend="+9%"
           trendUp={true}
@@ -134,7 +129,7 @@ const Home = () => {
         />
         <StatCard
           title="Current Occupancy"
-          value="182"
+          value={dashboardStats.currentlyInside}
           icon={UserCheck}
           trend="LIVE"
           trendUp={true}
@@ -142,7 +137,7 @@ const Home = () => {
         />
         <StatCard
           title="Failed Scans"
-          value="14"
+          value={dashboardStats.alertsPending}
           icon={AlertTriangle}
           trend="-3%"
           trendUp={false}
@@ -159,37 +154,43 @@ const Home = () => {
               <div className="text-xs text-muted-foreground">Last 24 Hours</div>
             </div>
             <div className="h-[280px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={attendanceData}>
-                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                  <XAxis 
-                    dataKey="time" 
-                    className="text-xs"
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <YAxis 
-                    className="text-xs"
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <Tooltip 
-                    contentStyle={{
-                      backgroundColor: 'hsl(var(--card))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px'
-                    }}
-                  />
-                  <Area 
-                    type="monotone" 
-                    dataKey="attendance" 
-                    stroke="hsl(var(--primary))" 
-                    fill="hsl(var(--primary))" 
-                    fillOpacity={0.2}
-                    strokeWidth={2}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+              {attendanceData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={attendanceData}>
+                    <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                    <XAxis 
+                      dataKey="time" 
+                      className="text-xs"
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis 
+                      className="text-xs"
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <Tooltip 
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px'
+                      }}
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="attendance" 
+                      stroke="hsl(var(--primary))" 
+                      fill="hsl(var(--primary))" 
+                      fillOpacity={0.2}
+                      strokeWidth={2}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-full text-muted-foreground">
+                  <p>No attendance data available</p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -208,7 +209,7 @@ const Home = () => {
                 <span>High</span>
               </div>
             </div>
-            <PeakTimesHeatmap />
+            <PeakTimesHeatmap peakTimesData={peakTimesData} />
           </div>
         </div>
 
@@ -223,23 +224,29 @@ const Home = () => {
               </div>
             </div>
             <div className="space-y-3 max-h-[300px] overflow-y-auto">
-              {whatsAppAlerts.map((alert, index) => (
-                <div key={index} className="flex items-start gap-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
-                  <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
-                    alert.status === 'delivered' ? 'bg-green-500' :
-                    alert.status === 'failed' ? 'bg-red-500' : 'bg-yellow-500'
-                  }`} />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Badge variant={alert.type === 'Failed' ? 'destructive' : alert.type === 'Delivered' ? 'success' : 'default'} className="text-xs">
-                        {alert.type}
-                      </Badge>
-                      <span className="text-xs text-muted-foreground">{alert.time}</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground leading-relaxed">{alert.message}</p>
+              {whatsAppAlerts.length > 0 ? (
+                whatsAppAlerts.map((alert, index) => (
+                  <div key={index} className="flex items-start gap-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                    <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
+                      alert.status === 'delivered' ? 'bg-green-500' :
+                      alert.status === 'failed' ? 'bg-red-500' : 'bg-yellow-500'
+                    }`} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Badge variant={alert.type === 'Failed' ? 'destructive' : alert.type === 'Delivered' ? 'success' : 'default'} className="text-xs">
+                          {alert.type}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">{alert.time}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground leading-relaxed">{alert.message}</p>
                   </div>
                 </div>
-              ))}
+              ))
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p>No WhatsApp alerts available</p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -250,27 +257,33 @@ const Home = () => {
               <a href="/dashboard/attendance" className="text-sm text-primary hover:underline">View All Logs</a>
             </div>
             <div className="space-y-4">
-              {liveAttendance.map((student, index) => (
-                <div key={index} className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={`/placeholder-student-${index + 1}.jpg`} />
-                    <AvatarFallback className="text-xs">{student.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <p className="text-sm font-medium truncate">{student.name}</p>
-                      <Badge variant={student.status === 'IN' ? 'default' : 'secondary'} className="text-xs">
-                        {student.status}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                      <span>{student.id}</span>
-                      <span>Last Entry: {student.lastEntry}</span>
-                      {student.lastExit && <span>Last Exit: {student.lastExit}</span>}
+              {liveAttendance.length > 0 ? (
+                liveAttendance.map((student, index) => (
+                  <div key={index} className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={`/placeholder-student-${index + 1}.jpg`} />
+                      <AvatarFallback className="text-xs">{student.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="text-sm font-medium truncate">{student.name}</p>
+                        <Badge variant={student.status === 'IN' ? 'default' : 'secondary'} className="text-xs">
+                          {student.status}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                        <span>{student.id}</span>
+                        <span>Last Entry: {student.lastEntry}</span>
+                        {student.lastExit && <span>Last Exit: {student.lastExit}</span>}
+                      </div>
                     </div>
                   </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p>No live attendance data available</p>
                 </div>
-              ))}
+              )}
             </div>
             <div className="mt-4 pt-4 border-t text-center">
               <p className="text-xs text-muted-foreground">Displaying results for all classrooms</p>

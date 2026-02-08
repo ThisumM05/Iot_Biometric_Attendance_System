@@ -13,83 +13,16 @@ import {
   TableRow,
 } from '@/components/ui/table';
 
-const classData = [
-  {
-    id: '10-A',
-    name: 'Grade 10 Section A',
-    teacher: 'Mrs. Johnson',
-    teacherAvatar: '/placeholder-avatar.jpg',
-    totalStudents: 32,
-    presentToday: 28,
-    attendanceRate: 87.5,
-    schedule: 'Mon-Fri, 8:00 AM - 2:00 PM',
-    room: 'Room 101',
-    subjects: ['Math', 'Science', 'English', 'History']
-  },
-  {
-    id: '10-B',
-    name: 'Grade 10 Section B',
-    teacher: 'Mr. Smith',
-    teacherAvatar: '/placeholder-avatar.jpg',
-    totalStudents: 30,
-    presentToday: 26,
-    attendanceRate: 86.7,
-    schedule: 'Mon-Fri, 8:00 AM - 2:00 PM',
-    room: 'Room 102',
-    subjects: ['Math', 'Science', 'English', 'Geography']
-  },
-  {
-    id: '10-C',
-    name: 'Grade 10 Section C',
-    teacher: 'Ms. Williams',
-    teacherAvatar: '/placeholder-avatar.jpg',
-    totalStudents: 28,
-    presentToday: 25,
-    attendanceRate: 89.3,
-    schedule: 'Mon-Fri, 8:30 AM - 2:30 PM',
-    room: 'Room 103',
-    subjects: ['Math', 'Science', 'English', 'Art']
-  },
-  {
-    id: '9-A',
-    name: 'Grade 9 Section A',
-    teacher: 'Mr. Davis',
-    teacherAvatar: '/placeholder-avatar.jpg',
-    totalStudents: 35,
-    presentToday: 32,
-    attendanceRate: 91.4,
-    schedule: 'Mon-Fri, 9:00 AM - 3:00 PM',
-    room: 'Room 201',
-    subjects: ['Math', 'Science', 'English', 'Social Studies']
-  }
-];
+// Class data will be fetched from database
+// Currently empty until database connection is established
 
-const recentActivity = [
-  {
-    id: 1,
-    action: 'New student enrolled',
-    class: '10-A',
-    student: 'Emma Thompson',
-    time: '2 hours ago'
-  },
-  {
-    id: 2,
-    action: 'Class schedule updated',
-    class: '10-B',
-    details: 'Science lab timing changed',
-    time: '5 hours ago'
-  },
-  {
-    id: 3,
-    action: 'Attendance marked',
-    class: '9-A',
-    details: '32/35 students present',
-    time: '1 day ago'
-  }
-];
+// Recent activity data will be fetched from database
 
 export default function Classes() {
   const [selectedClass, setSelectedClass] = useState(null);
+  const [classes, setClasses] = useState([]);
+  const [recentActivity, setRecentActivity] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const getAttendanceColor = (rate) => {
     if (rate >= 90) return 'text-green-600';
@@ -121,7 +54,7 @@ export default function Classes() {
 
       {/* Class Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {classData.map((classItem) => (
+        {classes.map((classItem) => (
           <Card key={classItem.id} className="cursor-pointer hover:shadow-md transition-shadow"
                 onClick={() => setSelectedClass(classItem)}>
             <CardHeader className="pb-3">
@@ -201,7 +134,7 @@ export default function Classes() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {classData.map((classItem) => (
+                  {classes.map((classItem) => (
                     <TableRow key={classItem.id}>
                       <TableCell>
                         <div>

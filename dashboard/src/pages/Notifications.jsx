@@ -55,12 +55,8 @@ const Notifications = () => {
     custom: ''
   };
 
-  const students = [
-    { id: 'STU-2023-001', name: 'John Doe', parentPhone: '+1234567890' },
-    { id: 'STU-2023-002', name: 'Alice Smith', parentPhone: '+1234567891' },
-    { id: 'STU-2023-003', name: 'Michael Jordan', parentPhone: '+1234567892' },
-    { id: 'STU-2023-004', name: 'Sarah Wilson', parentPhone: '+1234567893' },
-  ];
+  // Students data will be fetched from database
+  const [students, setStudents] = useState([]);
 
   const [settings, setSettings] = useState({
     whatsappEnabled: true,

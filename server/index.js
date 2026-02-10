@@ -31,9 +31,9 @@ app.use((req, res, next) => {
     const ip = req.ip || req.connection.remoteAddress || 'Unknown';
 
     // Only log auth-related endpoints to avoid spam
-    if (url.includes('/api/auth/') || url.includes('/api/rabbitmq/')) {
-        console.log(`${method} ${url} | ${timestamp} | ${ip}`);
-    }
+    // if (url.includes('/api/auth/') || url.includes('/api/rabbitmq/')) {
+    //     console.log(`${method} ${url} | ${timestamp} | ${ip}`);
+    // }
 
     next();
 });
@@ -68,9 +68,6 @@ const connectDB = async () => {
     } catch (error) {
         console.error('MongoDB connection error:', error.message);
         console.log('Running server without database connection...');
-        console.log('To fix this:');
-        console.log('1. Install MongoDB: https://www.mongodb.com/try/download/community');
-        console.log('2. Or update MONGODB_URI in .env to a working connection string');
     }
 };
 

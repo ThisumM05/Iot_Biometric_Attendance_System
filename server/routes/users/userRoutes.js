@@ -36,6 +36,7 @@ router.get('/', async (req, res) => {
         const users = await User.find().select('-__v');
         res.json({ success: true, data: users });
     } catch (error) {
+        console.error('Error fetching users:', error);
         res.status(500).json({ success: false, message: error.message });
     }
 });

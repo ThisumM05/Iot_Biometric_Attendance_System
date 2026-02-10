@@ -110,17 +110,10 @@ class AuthController {
      * @param {*} res 
      */
     async verify(req, res) {
-        const timestamp = new Date().toISOString();
-        const clientIP = req.ip || req.connection.remoteAddress || req.headers['x-forwarded-for'] || 'Unknown';
-
         try {
-            console.log('TOKEN VERIFICATION REQUEST');
-            console.log(`${timestamp} | ${clientIP}`);
-
             const authHeader = req.headers.authorization;
 
             if (!authHeader || !authHeader.startsWith('Bearer ')) {
-                console.log('TOKEN MISSING: No authorization header provided\n');
                 return res.status(401).json({
                     success: false,
                     message: 'No token provided'
@@ -128,12 +121,9 @@ class AuthController {
             }
 
             const token = authHeader.substring(7); // Remove 'Bearer ' prefix
-            console.log(`Token: ${token.substring(0, 20)}...`);
-
             const decoded = authService.verifyToken(token);
 
             if (decoded) {
-                console.log(`TOKEN VALID: User ${decoded.username} authenticated\n`);
                 return res.status(200).json({
                     success: true,
                     message: 'Token is valid',

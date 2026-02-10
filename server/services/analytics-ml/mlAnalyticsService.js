@@ -18,19 +18,19 @@ class MLAnalyticsService {
     async initialize() {
         try {
             console.log('Initializing ML Analytics Service...');
-            
+
             // Start real-time vision processing
             this.startRealTimeVisionProcessing();
-            
+
             // Schedule periodic analysis
             this.schedulePeriodicAnalysis();
-            
+
             // Initialize behavior clustering
             await this.initializeBehaviorClustering();
-            
+
             this.isInitialized = true;
             console.log('ML Analytics Service initialized successfully');
-            
+
         } catch (error) {
             console.error('Error initializing ML Analytics Service:', error);
             throw error;
@@ -48,15 +48,15 @@ class MLAnalyticsService {
             }
 
             console.log('Processing attendance event with ML analytics:', attendanceData.user);
-            
+
             // Trigger real-time analysis
             const mlInsights = await Promise.allSettled([
                 // Update user behavior analysis
                 behaviorAnalysisService.analyzeUserBehavior(attendanceData.user),
-                
+
                 // Check for anomalies
                 anomalyDetectionService.detectAnomalies(1), // Last 1 hour
-                
+
                 // Correlate with vision data if available
                 visionAnalyticsService.correlateBiometricAttendance(60000) // 1 minute window
             ]);
@@ -70,7 +70,7 @@ class MLAnalyticsService {
 
             // Generate real-time alerts if needed
             const alerts = await this.generateRealTimeAlerts(results, attendanceData);
-            
+
             // Emit ML insights via Socket.IO if available
             if (global.io) {
                 global.io.emit('ml-insights', {
@@ -99,20 +99,20 @@ class MLAnalyticsService {
     async generateDashboardAnalytics() {
         try {
             console.log('Generating comprehensive dashboard analytics...');
-            
+
             const analytics = await Promise.allSettled([
                 // Behavior patterns analysis
                 behaviorAnalysisService.analyzeAllUsersBehavior(),
-                
+
                 // Predictive analytics
                 predictiveAnalyticsService.generatePredictions(7), // 7 days forecast
-                
+
                 // Temporal trends
                 temporalAnalyticsService.generateTemporalAnalysis('monthly'),
-                
+
                 // Anomaly detection
                 anomalyDetectionService.detectAnomalies(24), // Last 24 hours
-                
+
                 // Vision analytics
                 visionAnalyticsService.getOccupancyAnalytics(24)
             ]);
@@ -149,10 +149,10 @@ class MLAnalyticsService {
             const insights = await Promise.allSettled([
                 // Current occupancy
                 visionAnalyticsService.getRealTimeOccupancy(),
-                
+
                 // Recent anomalies
                 anomalyDetectionService.getRecentAnomalies(5),
-                
+
                 // Today's predictions vs actual
                 this.getTodaysPredictionAccuracy()
             ]);
@@ -176,11 +176,11 @@ class MLAnalyticsService {
     async getUserMLInsights(userId) {
         try {
             const insights = await behaviorAnalysisService.analyzeUserBehavior(userId);
-            
+
             // Get user's risk assessment and recommendations
             const riskAssessment = await predictiveAnalyticsService.assessUserRisks();
             const userRisk = riskAssessment.assessments.find(a => a.userId.toString() === userId);
-            
+
             return {
                 success: true,
                 userId,
@@ -202,13 +202,13 @@ class MLAnalyticsService {
         try {
             // Start vision analytics for default camera
             const visionProcessorId = visionAnalyticsService.startRealTimeProcessing(
-                'ESP32_CAM_001', 
+                'ESP32_CAM_001',
                 30000 // Process every 30 seconds
             );
-            
+
             this.realTimeProcessors.set('vision_default', visionProcessorId);
             console.log('Real-time vision processing started');
-            
+
         } catch (error) {
             console.error('Error starting real-time vision processing:', error);
         }
@@ -235,7 +235,7 @@ class MLAnalyticsService {
                     const anomalies = await anomalyDetectionService.detectAnomalies(1);
                     if (anomalies.anomalies && anomalies.anomalies.length > 0) {
                         console.log(`Detected ${anomalies.anomalies.length} anomalies`);
-                        
+
                         // Emit critical anomalies via Socket.IO
                         const criticalAnomalies = anomalies.anomalies.filter(a => a.severity === 'critical' || a.severity === 'high');
                         if (criticalAnomalies.length > 0 && global.io) {
@@ -252,9 +252,9 @@ class MLAnalyticsService {
 
             this.analysisSchedules.set('full_analysis', fullAnalysisInterval);
             this.analysisSchedules.set('anomaly_detection', anomalyDetectionInterval);
-            
+
             console.log('Periodic ML analysis scheduled');
-            
+
         } catch (error) {
             console.error('Error scheduling periodic analysis:', error);
         }
@@ -284,7 +284,7 @@ class MLAnalyticsService {
             // Check for high-risk behavior
             if (mlResults.userBehavior && mlResults.userBehavior.riskAssessment) {
                 const risk = mlResults.userBehavior.riskAssessment;
-                
+
                 if (risk.absenteeismRisk > 0.8) {
                     alerts.push({
                         type: 'high_absence_risk',
@@ -294,7 +294,7 @@ class MLAnalyticsService {
                         confidence: risk.confidenceLevel
                     });
                 }
-                
+
                 if (risk.lateArrivalRisk > 0.8 && attendanceData.status === 'late') {
                     alerts.push({
                         type: 'chronic_lateness',
@@ -311,7 +311,7 @@ class MLAnalyticsService {
                 const userAnomalies = mlResults.anomalies.anomalies.filter(
                     a => a.userId && a.userId.toString() === attendanceData.user.toString()
                 );
-                
+
                 userAnomalies.forEach(anomaly => {
                     if (anomaly.severity === 'high' || anomaly.severity === 'critical') {
                         alerts.push({
@@ -330,7 +330,7 @@ class MLAnalyticsService {
                 const lowConfidenceCorrelations = mlResults.visionCorrelation.correlations.filter(
                     c => c.correlationConfidence < 0.5
                 );
-                
+
                 if (lowConfidenceCorrelations.length > 0) {
                     alerts.push({
                         type: 'vision_correlation_low',
@@ -368,7 +368,7 @@ class MLAnalyticsService {
             if (dashboardData.behaviorClusters) {
                 const clusters = dashboardData.behaviorClusters;
                 summary.totalUsers = Object.values(clusters).reduce((total, users) => total + users.length, 0);
-                
+
                 const allUsers = Object.values(clusters).flat();
                 if (allUsers.length > 0) {
                     summary.averagePunctuality = Math.round(
@@ -477,7 +477,7 @@ class MLAnalyticsService {
         try {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
-            
+
             await AnalyticsCache.findOneAndUpdate(
                 { analysisDate: today },
                 {
@@ -499,22 +499,22 @@ class MLAnalyticsService {
     async shutdown() {
         try {
             console.log('Shutting down ML Analytics Service...');
-            
+
             // Clear intervals
             for (const [name, intervalId] of this.analysisSchedules) {
                 clearInterval(intervalId);
                 console.log(`Cleared ${name} schedule`);
             }
-            
+
             // Stop real-time processors
             for (const [name, processorId] of this.realTimeProcessors) {
                 clearInterval(processorId);
                 console.log(`Stopped ${name} processor`);
             }
-            
+
             this.isInitialized = false;
             console.log('ML Analytics Service shutdown complete');
-            
+
         } catch (error) {
             console.error('Error shutting down ML Analytics Service:', error);
         }

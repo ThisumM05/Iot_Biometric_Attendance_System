@@ -120,11 +120,11 @@ class PredictiveAnalyticsService {
         for (let i = 1; i <= forecastDays; i++) {
             const forecastDate = new Date(today);
             forecastDate.setDate(today.getDate() + i);
-            
+
             // Apply day-of-week factors
             const dayOfWeek = forecastDate.getDay();
             const dayFactor = this.getDayOfWeekFactor(dayOfWeek);
-            
+
             const predictedAttendance = Math.round(avgAttendance * dayFactor);
             const predictedOnTime = Math.round(predictedAttendance * avgOnTimeRate);
             const predictedLate = predictedAttendance - predictedOnTime;
@@ -170,7 +170,7 @@ class PredictiveAnalyticsService {
 
             for (const user of users) {
                 const behavior = await behaviorAnalysisService.analyzeUserBehavior(user._id);
-                
+
                 riskAssessments.push({
                     userId: user._id,
                     username: user.username,
@@ -237,14 +237,14 @@ class PredictiveAnalyticsService {
                 const dayOfWeek = forecastDate.getDay();
 
                 const dailyOccupancy = [];
-                
+
                 for (let hour = 6; hour <= 22; hour++) {
                     const historicalCount = hourlyPatterns
                         .filter(p => p._id.hour === hour && p._id.dayOfWeek === dayOfWeek)
                         .reduce((sum, p) => sum + p.count, 0);
-                    
+
                     const avgCount = historicalCount / 4; // Assuming 4 weeks of data
-                    
+
                     dailyOccupancy.push({
                         hour,
                         predictedOccupancy: Math.round(avgCount),
@@ -323,7 +323,7 @@ class PredictiveAnalyticsService {
         // High-risk users recommendations
         const highRiskUsers = predictions.userRiskAssessment.assessments
             .filter(u => u.riskLevel === 'high');
-        
+
         if (highRiskUsers.length > 0) {
             recommendations.push({
                 type: 'user_intervention',
@@ -338,7 +338,7 @@ class PredictiveAnalyticsService {
         // Capacity management recommendations
         const peakOccupancy = Math.max(...predictions.occupancyPredictions
             .flatMap(day => day.hourlyOccupancy.map(h => h.predictedOccupancy)));
-        
+
         if (peakOccupancy > 45) { // Assuming capacity of 50
             recommendations.push({
                 type: 'capacity_management',
@@ -369,9 +369,9 @@ class PredictiveAnalyticsService {
      * Helper methods
      */
     calculateOverallRisk(riskAssessment) {
-        return (riskAssessment.absenteeismRisk * 0.6) + 
-               (riskAssessment.lateArrivalRisk * 0.3) + 
-               (riskAssessment.irregularityScore * 0.1);
+        return (riskAssessment.absenteeismRisk * 0.6) +
+            (riskAssessment.lateArrivalRisk * 0.3) +
+            (riskAssessment.irregularityScore * 0.1);
     }
 
     classifyRiskLevel(riskAssessment) {
@@ -423,11 +423,11 @@ class PredictiveAnalyticsService {
     generateDefaultForecast(days) {
         const forecast = [];
         const today = new Date();
-        
+
         for (let i = 1; i <= days; i++) {
             const date = new Date(today);
             date.setDate(today.getDate() + i);
-            
+
             forecast.push({
                 date,
                 predictedAttendance: 20, // Default estimate
@@ -437,7 +437,7 @@ class PredictiveAnalyticsService {
                 confidence: 0.3
             });
         }
-        
+
         return forecast;
     }
 
@@ -454,21 +454,21 @@ class PredictiveAnalyticsService {
             const date = new Date(d._id.year, d._id.month - 1, d._id.day);
             return date.getDay() === dayOfWeek;
         });
-        
+
         return Math.min(dayData.length / 4, 1); // Confidence based on historical data points
     }
 
     identifyTrends(data) {
         if (data.length < 7) return { trend: 'insufficient_data' };
-        
+
         const recent = data.slice(-7);
         const earlier = data.slice(-14, -7);
-        
+
         const recentAvg = recent.reduce((sum, d) => sum + d.totalAttendance, 0) / recent.length;
         const earlierAvg = earlier.reduce((sum, d) => sum + d.totalAttendance, 0) / earlier.length;
-        
+
         const change = this.calculatePercentageChange(earlierAvg, recentAvg);
-        
+
         return {
             trend: this.determineTrend(earlierAvg, recentAvg),
             change: change,
@@ -478,29 +478,29 @@ class PredictiveAnalyticsService {
 
     generateUserRecommendations(behavior) {
         const recommendations = [];
-        
+
         if (behavior.riskAssessment.absenteeismRisk > 0.7) {
             recommendations.push('Schedule one-on-one meeting');
             recommendations.push('Review attendance policy');
         }
-        
+
         if (behavior.riskAssessment.lateArrivalRisk > 0.6) {
             recommendations.push('Discuss schedule flexibility');
             recommendations.push('Provide time management resources');
         }
-        
+
         if (behavior.behaviorPatterns.consistencyScore < 0.3) {
             recommendations.push('Identify attendance barriers');
             recommendations.push('Create attendance improvement plan');
         }
-        
+
         return recommendations;
     }
 
     calculateConsistencyScore(data) {
         // Simple consistency measure based on attendance variance
         if (data.totalAttendance === 0) return 0;
-        
+
         const weekdayRate = data.weekdayAttendance / (data.weekdayAttendance + data.weekendAttendance);
         return Math.min(weekdayRate * data.onTimeRate, 1);
     }
@@ -509,7 +509,7 @@ class PredictiveAnalyticsService {
         try {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
-            
+
             await AnalyticsCache.findOneAndUpdate(
                 { analysisDate: today },
                 {

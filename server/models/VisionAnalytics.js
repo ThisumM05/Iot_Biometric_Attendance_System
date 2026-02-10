@@ -37,13 +37,13 @@ const VisionAnalyticsSchema = new mongoose.Schema({
         weatherCondition: String // optional
     },
     correlationData: {
-        biometricEventId: { 
-            type: mongoose.Schema.Types.ObjectId, 
+        biometricEventId: {
+            type: mongoose.Schema.Types.ObjectId,
             ref: 'Attendance',
-            sparse: true 
+            sparse: true
         },
         correlationConfidence: { type: Number, min: 0, max: 1 },
-        matchedPersons: [{ 
+        matchedPersons: [{
             detectionId: String,
             userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
             matchConfidence: Number

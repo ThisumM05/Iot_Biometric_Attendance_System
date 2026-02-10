@@ -20,13 +20,13 @@ router.get('/dashboard', async (req, res) => {
     try {
         console.log('Generating dashboard analytics...');
         const analytics = await mlAnalyticsService.generateDashboardAnalytics();
-        
+
         res.json({
             success: true,
             message: 'Dashboard analytics generated successfully',
             data: analytics
         });
-        
+
     } catch (error) {
         console.error('Error generating dashboard analytics:', error);
         res.status(500).json({
@@ -44,13 +44,13 @@ router.get('/dashboard', async (req, res) => {
 router.get('/realtime', async (req, res) => {
     try {
         const insights = await mlAnalyticsService.getRealTimeInsights();
-        
+
         res.json({
             success: true,
             message: 'Real-time insights retrieved successfully',
             data: insights
         });
-        
+
     } catch (error) {
         console.error('Error getting real-time insights:', error);
         res.status(500).json({
@@ -68,13 +68,13 @@ router.get('/realtime', async (req, res) => {
 router.get('/behavior/patterns', async (req, res) => {
     try {
         const patterns = await behaviorAnalysisService.analyzeAllUsersBehavior();
-        
+
         res.json({
             success: true,
             message: 'Behavior patterns analyzed successfully',
             data: patterns
         });
-        
+
     } catch (error) {
         console.error('Error analyzing behavior patterns:', error);
         res.status(500).json({
@@ -93,13 +93,13 @@ router.get('/behavior/user/:userId', async (req, res) => {
     try {
         const { userId } = req.params;
         const insights = await mlAnalyticsService.getUserMLInsights(userId);
-        
+
         res.json({
             success: true,
             message: 'User behavior analysis completed',
             data: insights
         });
-        
+
     } catch (error) {
         console.error('Error analyzing user behavior:', error);
         res.status(500).json({
@@ -118,13 +118,13 @@ router.get('/predictions', async (req, res) => {
     try {
         const { timeframe = 7 } = req.query;
         const predictions = await predictiveAnalyticsService.generatePredictions(parseInt(timeframe));
-        
+
         res.json({
             success: true,
             message: 'Predictions generated successfully',
             data: predictions
         });
-        
+
     } catch (error) {
         console.error('Error generating predictions:', error);
         res.status(500).json({
@@ -143,13 +143,13 @@ router.get('/anomalies', async (req, res) => {
     try {
         const { timeframe = 24 } = req.query;
         const anomalies = await anomalyDetectionService.detectAnomalies(parseInt(timeframe));
-        
+
         res.json({
             success: true,
             message: 'Anomaly detection completed',
             data: anomalies
         });
-        
+
     } catch (error) {
         console.error('Error detecting anomalies:', error);
         res.status(500).json({
@@ -168,13 +168,13 @@ router.get('/anomalies/recent', async (req, res) => {
     try {
         const { limit = 10 } = req.query;
         const anomalies = await anomalyDetectionService.getRecentAnomalies(parseInt(limit));
-        
+
         res.json({
             success: true,
             message: 'Recent anomalies retrieved',
             data: anomalies
         });
-        
+
     } catch (error) {
         console.error('Error getting recent anomalies:', error);
         res.status(500).json({
@@ -193,13 +193,13 @@ router.get('/temporal/trends', async (req, res) => {
     try {
         const { timeframe = 'monthly' } = req.query;
         const trends = await temporalAnalyticsService.generateTemporalAnalysis(timeframe);
-        
+
         res.json({
             success: true,
             message: 'Temporal trends analyzed successfully',
             data: trends
         });
-        
+
     } catch (error) {
         console.error('Error analyzing temporal trends:', error);
         res.status(500).json({
@@ -218,13 +218,13 @@ router.get('/vision/occupancy', async (req, res) => {
     try {
         const { timeframe = 24 } = req.query;
         const occupancy = await visionAnalyticsService.getOccupancyAnalytics(parseInt(timeframe));
-        
+
         res.json({
             success: true,
             message: 'Occupancy analytics retrieved',
             data: occupancy
         });
-        
+
     } catch (error) {
         console.error('Error getting occupancy analytics:', error);
         res.status(500).json({
@@ -243,13 +243,13 @@ router.get('/vision/realtime', async (req, res) => {
     try {
         const { deviceId } = req.query;
         const occupancy = await visionAnalyticsService.getRealTimeOccupancy(deviceId);
-        
+
         res.json({
             success: true,
             message: 'Real-time occupancy data retrieved',
             data: occupancy
         });
-        
+
     } catch (error) {
         console.error('Error getting real-time occupancy:', error);
         res.status(500).json({
@@ -268,13 +268,13 @@ router.post('/vision/process', async (req, res) => {
     try {
         const { deviceId = 'ESP32_CAM_001', imageData } = req.body;
         const result = await visionAnalyticsService.processCameraFrame(deviceId, imageData);
-        
+
         res.json({
             success: true,
             message: 'Vision processing completed',
             data: result
         });
-        
+
     } catch (error) {
         console.error('Error processing vision frame:', error);
         res.status(500).json({
@@ -292,7 +292,7 @@ router.post('/vision/process', async (req, res) => {
 router.get('/clustering', async (req, res) => {
     try {
         const clusterData = await behaviorAnalysisService.analyzeAllUsersBehavior();
-        
+
         // Transform data for scatter plot visualization
         const scatterPlotData = [];
         Object.entries(clusterData).forEach(([cluster, users]) => {
@@ -308,7 +308,7 @@ router.get('/clustering', async (req, res) => {
                 });
             });
         });
-        
+
         res.json({
             success: true,
             message: 'Clustering data prepared for visualization',
@@ -321,7 +321,7 @@ router.get('/clustering', async (req, res) => {
                 }))
             }
         });
-        
+
     } catch (error) {
         console.error('Error getting clustering data:', error);
         res.status(500).json({
@@ -340,10 +340,10 @@ router.get('/forecast', async (req, res) => {
     try {
         const { days = 7 } = req.query;
         const predictions = await predictiveAnalyticsService.generatePredictions(parseInt(days));
-        
+
         // Format data for line chart visualization
         const forecast = predictions.predictions.attendanceForecast;
-        
+
         const chartData = {
             historical: forecast.historical.map(day => ({
                 date: new Date(day._id.year, day._id.month - 1, day._id.day).toISOString().split('T')[0],
@@ -359,7 +359,7 @@ router.get('/forecast', async (req, res) => {
                 confidence: day.confidence
             }))
         };
-        
+
         res.json({
             success: true,
             message: 'Forecast data prepared for visualization',
@@ -369,7 +369,7 @@ router.get('/forecast', async (req, res) => {
                 trends: forecast.trends
             }
         });
-        
+
     } catch (error) {
         console.error('Error getting forecast data:', error);
         res.status(500).json({
@@ -388,7 +388,7 @@ router.get('/heatmap', async (req, res) => {
     try {
         const { timeframe = 24 } = req.query;
         const occupancyData = await visionAnalyticsService.getOccupancyAnalytics(parseInt(timeframe));
-        
+
         res.json({
             success: true,
             message: 'Heatmap data retrieved',
@@ -398,7 +398,7 @@ router.get('/heatmap', async (req, res) => {
                 trends: occupancyData.occupancyTrends
             }
         });
-        
+
     } catch (error) {
         console.error('Error getting heatmap data:', error);
         res.status(500).json({
@@ -495,7 +495,7 @@ router.get('/users', async (req, res) => {
 router.get('/users/:userId', async (req, res) => {
     try {
         const { userId } = req.params;
-        
+
         // For now, return detailed dummy data - will be replaced with real ML analysis
         const userDetails = {
             'U001': {
@@ -535,7 +535,7 @@ router.get('/users/:userId', async (req, res) => {
         };
 
         const userData = userDetails[userId];
-        
+
         if (!userData) {
             return res.status(404).json({
                 success: false,

@@ -68,11 +68,11 @@ class AnomalyDetectionService {
      */
     async detectBehavioralAnomalies(startDate, endDate) {
         const anomalies = [];
-        
+
         try {
             // Get users with recent attendance
             const users = await User.find({ fingerprintId: { $ne: null } });
-            
+
             for (const user of users) {
                 // Get user's attendance data
                 const recentAttendance = await Attendance.find({
@@ -83,7 +83,7 @@ class AnomalyDetectionService {
                 // Get user's historical pattern (last 30 days)
                 const historicalStart = new Date();
                 historicalStart.setDate(historicalStart.getDate() - 30);
-                
+
                 const historicalAttendance = await Attendance.find({
                     user: user._id,
                     timestamp: { $gte: historicalStart, $lt: startDate }
@@ -103,7 +103,7 @@ class AnomalyDetectionService {
                 const punctualityAnomaly = this.detectPunctualityChange(user, recentAttendance, historicalAttendance);
                 if (punctualityAnomaly) anomalies.push(punctualityAnomaly);
             }
-            
+
         } catch (error) {
             console.error('Error detecting behavioral anomalies:', error);
         }
@@ -116,7 +116,7 @@ class AnomalyDetectionService {
      */
     async detectTemporalAnomalies(startDate, endDate) {
         const anomalies = [];
-        
+
         try {
             const recentAttendance = await Attendance.find({
                 timestamp: { $gte: startDate, $lte: endDate }
@@ -128,9 +128,9 @@ class AnomalyDetectionService {
                 const dayOfWeek = recordTime.getDay();
 
                 // Check for off-hours activity
-                if (hour < this.anomalyThresholds.temporal.offHoursThreshold.before || 
+                if (hour < this.anomalyThresholds.temporal.offHoursThreshold.before ||
                     hour > this.anomalyThresholds.temporal.offHoursThreshold.after) {
-                    
+
                     anomalies.push({
                         type: 'temporal',
                         severity: 'medium',
@@ -153,7 +153,7 @@ class AnomalyDetectionService {
                     });
                 }
             }
-            
+
         } catch (error) {
             console.error('Error detecting temporal anomalies:', error);
         }
@@ -166,18 +166,18 @@ class AnomalyDetectionService {
      */
     async detectDeviceAnomalies(startDate, endDate) {
         const anomalies = [];
-        
+
         try {
             // Note: This would need integration with device monitoring
             // For now, we'll simulate device health checks
-            
+
             // Check for missing heartbeats or device offline status
             const deviceIds = ['ESP32_001', 'ESP32_002']; // Example device IDs
-            
+
             for (const deviceId of deviceIds) {
                 // Simulate device health check
                 const lastSeen = new Date(Date.now() - Math.random() * 600000); // Random last seen time
-                
+
                 if (Date.now() - lastSeen.getTime() > this.anomalyThresholds.device.offlineThreshold) {
                     anomalies.push({
                         type: 'device',
@@ -189,7 +189,7 @@ class AnomalyDetectionService {
                     });
                 }
             }
-            
+
         } catch (error) {
             console.error('Error detecting device anomalies:', error);
         }
@@ -202,7 +202,7 @@ class AnomalyDetectionService {
      */
     async detectSecurityAnomalies(startDate, endDate) {
         const anomalies = [];
-        
+
         try {
             // Check for rapid successive attempts
             const recentAttendance = await Attendance.find({
@@ -211,14 +211,14 @@ class AnomalyDetectionService {
 
             // Group by user and check for rapid succession
             const userAttempts = {};
-            
+
             for (const record of recentAttendance) {
                 const userId = record.user._id.toString();
-                
+
                 if (!userAttempts[userId]) {
                     userAttempts[userId] = [];
                 }
-                
+
                 userAttempts[userId].push(record.timestamp);
             }
 
@@ -227,18 +227,18 @@ class AnomalyDetectionService {
                 if (attempts.length >= this.anomalyThresholds.security.multipleAttemptsThreshold) {
                     // Check if attempts are too close together
                     for (let i = 1; i < attempts.length; i++) {
-                        const timeDiff = Math.abs(new Date(attempts[i]) - new Date(attempts[i-1]));
-                        
+                        const timeDiff = Math.abs(new Date(attempts[i]) - new Date(attempts[i - 1]));
+
                         if (timeDiff < this.anomalyThresholds.security.suspiciousTimingThreshold * 1000) {
                             const user = await User.findById(userId);
-                            
+
                             anomalies.push({
                                 type: 'security',
                                 severity: 'high',
                                 description: `Suspicious rapid attendance attempts detected`,
                                 userId: userId,
                                 detectedAt: new Date(),
-                                metadata: { 
+                                metadata: {
                                     attemptCount: attempts.length,
                                     timeBetweenAttempts: timeDiff,
                                     username: user?.username
@@ -248,7 +248,7 @@ class AnomalyDetectionService {
                     }
                 }
             }
-            
+
         } catch (error) {
             console.error('Error detecting security anomalies:', error);
         }
@@ -261,19 +261,19 @@ class AnomalyDetectionService {
      */
     detectUnusualTiming(user, recentData, historicalData) {
         if (recentData.length === 0 || historicalData.length === 0) return null;
-        
+
         // Calculate historical average arrival time
         const historicalAvgTime = historicalData.reduce((sum, record) => {
             return sum + new Date(record.timestamp).getHours();
         }, 0) / historicalData.length;
-        
+
         // Calculate recent average arrival time
         const recentAvgTime = recentData.reduce((sum, record) => {
             return sum + new Date(record.timestamp).getHours();
         }, 0) / recentData.length;
-        
+
         const timeDifference = Math.abs(recentAvgTime - historicalAvgTime);
-        
+
         if (timeDifference > this.anomalyThresholds.behavioral.unusualTimeThreshold) {
             return {
                 type: 'behavioral',
@@ -288,7 +288,7 @@ class AnomalyDetectionService {
                 }
             };
         }
-        
+
         return null;
     }
 
@@ -299,9 +299,9 @@ class AnomalyDetectionService {
         const recentFrequency = recentData.length;
         const historicalDailyAvg = historicalData.length / 30; // Assuming 30-day historical period
         const expectedRecent = historicalDailyAvg * 1; // Assuming 1-day recent period
-        
+
         const frequencyChange = Math.abs(recentFrequency - expectedRecent) / expectedRecent;
-        
+
         if (frequencyChange > this.anomalyThresholds.behavioral.frequencyDropThreshold) {
             return {
                 type: 'behavioral',
@@ -316,7 +316,7 @@ class AnomalyDetectionService {
                 }
             };
         }
-        
+
         return null;
     }
 
@@ -325,12 +325,12 @@ class AnomalyDetectionService {
      */
     detectPunctualityChange(user, recentData, historicalData) {
         if (recentData.length === 0 || historicalData.length === 0) return null;
-        
+
         const historicalPunctuality = historicalData.filter(r => r.status === 'present').length / historicalData.length;
         const recentPunctuality = recentData.filter(r => r.status === 'present').length / recentData.length;
-        
+
         const punctualityChange = Math.abs(recentPunctuality - historicalPunctuality);
-        
+
         if (punctualityChange > this.anomalyThresholds.behavioral.punctualityChangeThreshold) {
             return {
                 type: 'behavioral',
@@ -345,7 +345,7 @@ class AnomalyDetectionService {
                 }
             };
         }
-        
+
         return null;
     }
 
@@ -364,7 +364,7 @@ class AnomalyDetectionService {
         try {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
-            
+
             await AnalyticsCache.findOneAndUpdate(
                 { analysisDate: today },
                 {
@@ -388,9 +388,9 @@ class AnomalyDetectionService {
             const cache = await AnalyticsCache.findOne({
                 analysisDate: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) }
             }).sort({ analysisDate: -1 });
-            
+
             if (!cache || !cache.anomalies) return [];
-            
+
             return cache.anomalies
                 .sort((a, b) => this.getSeverityWeight(b.severity) - this.getSeverityWeight(a.severity))
                 .slice(0, limit);

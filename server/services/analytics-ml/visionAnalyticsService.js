@@ -28,16 +28,16 @@ class VisionAnalyticsService {
         try {
             // Simulate vision analysis based on attendance data
             const visionData = this.simulateVisionDetection(attendanceData);
-            
+
             // Store vision analytics
             await this.storeVisionAnalytics(visionData);
-            
+
             return {
                 success: true,
                 visionData,
                 insights: this.generateVisionInsights(visionData)
             };
-            
+
         } catch (error) {
             console.error('Vision Analytics Error:', error);
             return { success: false, error: error.message };
@@ -51,7 +51,7 @@ class VisionAnalyticsService {
         // Simulate realistic vision detection metrics
         const baseConfidence = 0.75 + Math.random() * 0.2; // 75-95% confidence
         const peopleCount = Math.floor(Math.random() * 5) + 1; // 1-5 people detected
-        
+
         const detection = {
             timestamp: new Date(),
             location: attendanceData.deviceId || 'MAIN_ENTRANCE',
@@ -90,7 +90,7 @@ class VisionAnalyticsService {
     async storeVisionAnalytics(visionData) {
         try {
             const { default: VisionAnalytics } = await import('../../models/VisionAnalytics.js');
-            
+
             await VisionAnalytics.create({
                 timestamp: visionData.timestamp,
                 location: visionData.location,
@@ -109,7 +109,7 @@ class VisionAnalyticsService {
             });
 
             console.log(`[Vision Analytics] Stored detection data for ${visionData.location}`);
-            
+
         } catch (error) {
             console.error('Failed to store vision analytics:', error);
         }
@@ -157,7 +157,7 @@ class VisionAnalyticsService {
     async getRecentAnalytics(limit = 50) {
         try {
             const { default: VisionAnalytics } = await import('../../models/VisionAnalytics.js');
-            
+
             const analytics = await VisionAnalytics.find()
                 .sort({ timestamp: -1 })
                 .limit(limit)
@@ -172,7 +172,7 @@ class VisionAnalyticsService {
                 processingTime: item.processingTime,
                 username: item.user?.username || 'Unknown'
             }));
-            
+
         } catch (error) {
             console.error('Failed to get vision analytics:', error);
             return [];
@@ -185,10 +185,10 @@ class VisionAnalyticsService {
     async getAnalyticsSummary() {
         try {
             const { default: VisionAnalytics } = await import('../../models/VisionAnalytics.js');
-            
+
             const today = new Date();
             today.setHours(0, 0, 0, 0);
-            
+
             const [totalCount, avgConfidence, avgPeople] = await Promise.all([
                 VisionAnalytics.countDocuments({ timestamp: { $gte: today } }),
                 VisionAnalytics.aggregate([
@@ -208,7 +208,7 @@ class VisionAnalyticsService {
                 lastUpdate: this.visionMetrics.lastUpdate,
                 status: 'active'
             };
-            
+
         } catch (error) {
             console.error('Failed to get vision analytics summary:', error);
             return {
@@ -226,12 +226,12 @@ class VisionAnalyticsService {
      */
     async generateRealtimeInsights(attendanceData) {
         const visionResult = await this.analyzeAttendanceEvent(attendanceData);
-        
+
         if (!visionResult.success) return null;
 
         // Generate real-time alerts based on vision data
         const alerts = [];
-        
+
         if (visionResult.visionData.peopleCount > 3) {
             alerts.push({
                 type: 'vision',

@@ -6,7 +6,7 @@ class BehaviorAnalysisService {
     constructor() {
         this.clusterProfiles = {
             0: 'Always Early',
-            1: 'Consistent & Punctual', 
+            1: 'Consistent & Punctual',
             2: 'Often Late',
             3: 'Irregular Pattern',
             4: 'Weekend Active'
@@ -85,7 +85,7 @@ class BehaviorAnalysisService {
      */
     calculatePunctuality(attendanceData) {
         if (attendanceData.length === 0) return 0;
-        
+
         const onTimeCount = attendanceData.filter(record => record.status === 'present').length;
         return Math.min(onTimeCount / attendanceData.length, 1);
     }
@@ -95,17 +95,17 @@ class BehaviorAnalysisService {
      */
     calculateConsistency(attendanceData) {
         if (attendanceData.length < 2) return 0;
-        
+
         const arrivalTimes = attendanceData.map(record => {
             const hour = new Date(record.timestamp).getHours();
             const minute = new Date(record.timestamp).getMinutes();
             return hour + minute / 60;
         });
-        
+
         const mean = arrivalTimes.reduce((sum, time) => sum + time, 0) / arrivalTimes.length;
         const variance = arrivalTimes.reduce((sum, time) => sum + Math.pow(time - mean, 2), 0) / arrivalTimes.length;
         const stdDev = Math.sqrt(variance);
-        
+
         // Lower standard deviation = higher consistency
         return Math.max(0, 1 - (stdDev / 4)); // Normalize to 0-1
     }
@@ -123,13 +123,13 @@ class BehaviorAnalysisService {
      */
     findPeakTime(attendanceData) {
         if (attendanceData.length === 0) return 9; // Default to 9 AM
-        
+
         const hourCounts = {};
         attendanceData.forEach(record => {
             const hour = new Date(record.timestamp).getHours();
             hourCounts[hour] = (hourCounts[hour] || 0) + 1;
         });
-        
+
         return parseInt(Object.keys(hourCounts).reduce((a, b) => hourCounts[a] > hourCounts[b] ? a : b));
     }
 
@@ -141,7 +141,7 @@ class BehaviorAnalysisService {
             const dayOfWeek = new Date(record.timestamp).getDay();
             return dayOfWeek === 0 || dayOfWeek === 6; // Sunday or Saturday
         });
-        
+
         const weekdayRecords = attendanceData.length - weekendRecords.length;
         return weekdayRecords > 0 ? weekendRecords.length / weekdayRecords : 0;
     }
@@ -151,13 +151,13 @@ class BehaviorAnalysisService {
      */
     async assignBehaviorCluster(attendanceData) {
         if (attendanceData.length === 0) return 3; // Irregular pattern
-        
+
         const avgArrivalHour = attendanceData.reduce((sum, record) => {
             return sum + new Date(record.timestamp).getHours();
         }, 0) / attendanceData.length;
-        
+
         const lateRate = attendanceData.filter(record => record.status === 'late').length / attendanceData.length;
-        
+
         // Simple clustering logic
         if (avgArrivalHour < 8 && lateRate < 0.1) return 0; // Always Early
         if (lateRate < 0.2 && avgArrivalHour >= 8 && avgArrivalHour <= 10) return 1; // Consistent & Punctual
@@ -171,17 +171,17 @@ class BehaviorAnalysisService {
      */
     calculateAbsenteeismRisk(patterns) {
         let risk = 0;
-        
+
         // Low frequency increases risk
         if (patterns.frequencyScore < 0.5) risk += 0.3;
         if (patterns.frequencyScore < 0.3) risk += 0.2;
-        
+
         // Irregular patterns increase risk
         if (patterns.consistencyScore < 0.5) risk += 0.2;
-        
+
         // Poor punctuality increases risk
         if (patterns.punctualityScore < 0.7) risk += 0.3;
-        
+
         return Math.min(risk, 1);
     }
 
@@ -190,10 +190,10 @@ class BehaviorAnalysisService {
      */
     calculateLateArrivalRisk(patterns) {
         let risk = 1 - patterns.punctualityScore;
-        
+
         // Inconsistent timing increases risk
         if (patterns.consistencyScore < 0.5) risk += 0.2;
-        
+
         return Math.min(risk, 1);
     }
 
@@ -228,15 +228,15 @@ class BehaviorAnalysisService {
      */
     predictArrivalTime(attendanceData) {
         if (attendanceData.length === 0) return '09:00';
-        
+
         const avgMinutes = attendanceData.reduce((sum, record) => {
             const date = new Date(record.timestamp);
             return sum + (date.getHours() * 60 + date.getMinutes());
         }, 0) / attendanceData.length;
-        
+
         const hours = Math.floor(avgMinutes / 60);
         const minutes = Math.round(avgMinutes % 60);
-        
+
         return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
     }
 
@@ -299,15 +299,15 @@ class BehaviorAnalysisService {
         try {
             const users = await User.find({ fingerprintId: { $ne: null } });
             const clusterData = {};
-            
+
             for (const user of users) {
                 const behavior = await this.analyzeUserBehavior(user._id);
                 const cluster = behavior.clusterProfile;
-                
+
                 if (!clusterData[cluster]) {
                     clusterData[cluster] = [];
                 }
-                
+
                 clusterData[cluster].push({
                     userId: user._id,
                     username: user.username,
@@ -316,7 +316,7 @@ class BehaviorAnalysisService {
                     risk: behavior.riskAssessment.absenteeismRisk
                 });
             }
-            
+
             return clusterData;
         } catch (error) {
             console.error('Error analyzing all users behavior:', error);

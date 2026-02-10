@@ -24,7 +24,7 @@ class TemporalAnalyticsService {
             const patterns = await this.extractTimePatterns(attendanceData);
             const trends = await this.calculateTrends(attendanceData);
             const forecast = await this.generateForecast(patterns);
-            
+
             // Store temporal insights
             await this.storeTemporalInsights({
                 patterns,
@@ -33,7 +33,7 @@ class TemporalAnalyticsService {
                 user: attendanceData.user,
                 timestamp: attendanceData.timestamp
             });
-            
+
             return {
                 success: true,
                 patterns,
@@ -41,7 +41,7 @@ class TemporalAnalyticsService {
                 forecast,
                 insights: this.generateTemporalInsights(patterns, trends)
             };
-            
+
         } catch (error) {
             console.error('Temporal Analytics Error:', error);
             return { success: false, error: error.message };
@@ -54,7 +54,7 @@ class TemporalAnalyticsService {
     async extractTimePatterns(attendanceData) {
         try {
             const { default: DailyAttendance } = await import('../../models/DailyAttendance.js');
-            
+
             // Get user's historical attendance data
             const historicalData = await DailyAttendance.find({
                 user: attendanceData.user
@@ -74,7 +74,7 @@ class TemporalAnalyticsService {
             this.timePatterns.set(attendanceData.user.toString(), patterns);
 
             return patterns;
-            
+
         } catch (error) {
             console.error('Failed to extract time patterns:', error);
             return this.getDefaultPatterns();
@@ -86,7 +86,7 @@ class TemporalAnalyticsService {
      */
     analyzeDailyPattern(historicalData) {
         const hourCounts = new Array(24).fill(0);
-        
+
         historicalData.forEach(record => {
             if (record.entryTime) {
                 const hour = new Date(record.entryTime).getHours();
@@ -95,7 +95,7 @@ class TemporalAnalyticsService {
         });
 
         const peakHour = hourCounts.indexOf(Math.max(...hourCounts));
-        
+
         return {
             hourDistribution: hourCounts,
             peakHour,
@@ -110,7 +110,7 @@ class TemporalAnalyticsService {
     analyzeWeeklyPattern(historicalData) {
         const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         const dayCounts = new Array(7).fill(0);
-        
+
         historicalData.forEach(record => {
             const dayOfWeek = new Date(record.date).getDay();
             if (record.status === 'present' || record.entryTime) {
@@ -119,7 +119,7 @@ class TemporalAnalyticsService {
         });
 
         const mostActiveDay = dayCounts.indexOf(Math.max(...dayCounts));
-        
+
         return {
             dayDistribution: dayCounts,
             mostActiveDay: dayNames[mostActiveDay],
@@ -151,7 +151,7 @@ class TemporalAnalyticsService {
             }
         });
 
-        const preferredSlot = Object.keys(timeSlots).reduce((a, b) => 
+        const preferredSlot = Object.keys(timeSlots).reduce((a, b) =>
             timeSlots[a] > timeSlots[b] ? a : b
         );
 
@@ -198,7 +198,7 @@ class TemporalAnalyticsService {
         const avg = entryTimes.reduce((a, b) => a + b, 0) / entryTimes.length;
         const hours = Math.floor(avg);
         const minutes = Math.floor((avg - hours) * 60);
-        
+
         return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
     }
 
@@ -215,7 +215,7 @@ class TemporalAnalyticsService {
         const avg = exitTimes.reduce((a, b) => a + b, 0) / exitTimes.length;
         const hours = Math.floor(avg);
         const minutes = Math.floor((avg - hours) * 60);
-        
+
         return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
     }
 
@@ -224,11 +224,11 @@ class TemporalAnalyticsService {
      */
     calculateAttendanceRate(historicalData) {
         if (historicalData.length === 0) return 0;
-        
-        const presentDays = historicalData.filter(record => 
+
+        const presentDays = historicalData.filter(record =>
             record.status === 'present' || record.entryTime
         ).length;
-        
+
         return (presentDays / historicalData.length) * 100;
     }
 
@@ -238,7 +238,7 @@ class TemporalAnalyticsService {
     async calculateTrends(attendanceData) {
         try {
             const { default: DailyAttendance } = await import('../../models/DailyAttendance.js');
-            
+
             // Get recent trend data
             const recentData = await DailyAttendance.find({
                 user: attendanceData.user,
@@ -251,7 +251,7 @@ class TemporalAnalyticsService {
                 durationTrend: this.calculateDurationTrend(recentData),
                 weeklyComparison: this.compareWeeks(recentData)
             };
-            
+
         } catch (error) {
             console.error('Failed to calculate trends:', error);
             return this.getDefaultTrends();
@@ -266,13 +266,13 @@ class TemporalAnalyticsService {
             // Simple forecasting based on historical patterns
             const tomorrow = new Date();
             tomorrow.setDate(tomorrow.getDate() + 1);
-            
+
             const dayOfWeek = tomorrow.getDay();
             const probabilities = patterns.weeklyPattern?.dayDistribution || new Array(7).fill(0.5);
-            
+
             const attendanceProbability = probabilities[dayOfWeek] / Math.max(...probabilities);
             const predictedEntryTime = patterns.avgEntryTime;
-            
+
             return {
                 attendanceProbability: Math.min(attendanceProbability * patterns.attendanceRate / 100, 1),
                 predictedEntryTime,
@@ -280,7 +280,7 @@ class TemporalAnalyticsService {
                 riskFactors: this.identifyRiskFactors(patterns),
                 recommendations: this.generateRecommendations(patterns)
             };
-            
+
         } catch (error) {
             console.error('Failed to generate forecast:', error);
             return this.getDefaultForecast();
@@ -293,7 +293,7 @@ class TemporalAnalyticsService {
     async storeTemporalInsights(insights) {
         try {
             const { default: MLInsights } = await import('../../models/MLInsights.js');
-            
+
             await MLInsights.create({
                 type: 'temporal',
                 user: insights.user,
@@ -307,7 +307,7 @@ class TemporalAnalyticsService {
             });
 
             console.log(`[Temporal Analytics] Stored insights for user: ${insights.user}`);
-            
+
         } catch (error) {
             console.error('Failed to store temporal insights:', error);
         }
@@ -355,10 +355,10 @@ class TemporalAnalyticsService {
     async getTemporalTrends(days = 30) {
         try {
             const { default: DailyAttendance } = await import('../../models/DailyAttendance.js');
-            
+
             const startDate = new Date();
             startDate.setDate(startDate.getDate() - days);
-            
+
             const data = await DailyAttendance.aggregate([
                 { $match: { date: { $gte: startDate.toISOString().split('T')[0] } } },
                 {
@@ -366,8 +366,8 @@ class TemporalAnalyticsService {
                         _id: '$date',
                         total: { $sum: 1 },
                         present: { $sum: { $cond: [{ $ne: ['$status', 'absent'] }, 1, 0] } },
-                        avgEntryTime: { 
-                            $avg: { 
+                        avgEntryTime: {
+                            $avg: {
                                 $cond: [
                                     { $ne: ['$entryTime', null] },
                                     { $hour: '$entryTime' },
@@ -388,7 +388,7 @@ class TemporalAnalyticsService {
                 rate: Math.round((item.present / item.total) * 100),
                 avgEntryTime: item.avgEntryTime ? Math.round(item.avgEntryTime) : null
             }));
-            
+
         } catch (error) {
             console.error('Failed to get temporal trends:', error);
             return [];
@@ -436,15 +436,15 @@ class TemporalAnalyticsService {
 
     calculateAttendanceTrend(recentData) {
         if (recentData.length < 7) return 'insufficient_data';
-        
+
         const firstWeek = recentData.slice(0, 7);
         const secondWeek = recentData.slice(7, 14);
-        
+
         const firstWeekRate = firstWeek.filter(d => d.status === 'present').length / 7;
         const secondWeekRate = secondWeek.filter(d => d.status === 'present').length / 7;
-        
+
         const difference = secondWeekRate - firstWeekRate;
-        
+
         if (difference > 0.1) return 'improving';
         if (difference < -0.1) return 'declining';
         return 'stable';
@@ -466,29 +466,29 @@ class TemporalAnalyticsService {
 
     identifyRiskFactors(patterns) {
         const risks = [];
-        
+
         if (patterns.attendanceRate < 60) {
             risks.push('Low attendance rate');
         }
-        
+
         if (patterns.consistencyScore < 40) {
             risks.push('Inconsistent timing');
         }
-        
+
         return risks;
     }
 
     generateRecommendations(patterns) {
         const recommendations = [];
-        
+
         if (patterns.attendanceRate < 80) {
             recommendations.push('Consider setting attendance reminders');
         }
-        
+
         if (patterns.consistencyScore < 60) {
             recommendations.push('Try to establish a consistent routine');
         }
-        
+
         return recommendations;
     }
 }

@@ -15,6 +15,10 @@ import authRoutes from './routes/auth/authRoutes.js';
 import userRoutes from './routes/users/userRoutes.js';
 import attendanceRoutes from './routes/attendance/attendanceRoutes.js';
 import settingsRoutes from './routes/settings/settingsRoutes.js';
+import analyticsRoutes from './routes/analytics/analyticsRoutes.js';
+
+// Import ML Analytics Service
+import mlAnalyticsService from './services/analytics-ml/mlAnalyticsService.js';
 
 // Middleware
 app.use(cors({
@@ -55,6 +59,8 @@ app.use('/api/users', userRoutes);
 app.use('/api/attendance', attendanceRoutes);
 // Settings routes
 app.use('/api/settings', settingsRoutes);
+// Analytics routes (ML)
+app.use('/api/analytics', analyticsRoutes);
 
 // Database Connection
 const connectDB = async () => {
@@ -92,6 +98,23 @@ const io = new Server(httpServer, {
 
 // Pass Socket.io to RabbitMQ Service
 rabbitMQService.setSocketIo(io);
+
+// Set Socket.io globally for ML insights
+global.io = io;
+
+// Initialize ML Analytics Service
+mlAnalyticsService.initialize().catch(error => {
+    console.error('Failed to initialize ML Analytics Service:', error);
+});
+
+// Socket.IO connection handling  
+io.on('connection', (socket) => {
+    console.log('Client connected:', socket.id);
+    
+    socket.on('disconnect', () => {
+        console.log('Client disconnected:', socket.id);
+    });
+});
 
 // Error handling middleware
 app.use((err, req, res, next) => {

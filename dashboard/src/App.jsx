@@ -18,6 +18,8 @@ const Notifications = lazy(() => import('./pages/Notifications'));
 const EditProfile = lazy(() => import('./pages/EditProfile'));
 const BiometricUsers = lazy(() => import('./pages/BiometricUsers'));
 const RealtimeAttendance = lazy(() => import('./pages/RealtimeAttendance'));
+const Analytics = lazy(() => import('./pages/Analytics'));
+const UserAnalytics = lazy(() => import('./pages/UserAnalytics'));
 
 // Artificial delay for demonstration purposes (Optional - remove in production)
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -44,6 +46,8 @@ function App() {
               }>
                 <Route index element={<Navigate to="/dashboard" replace />} />
                 <Route path="dashboard" element={<Home />} />
+                <Route path="analytics" element={<Analytics />} />
+                <Route path="user-analytics" element={<UserAnalytics />} />
                 <Route path="attendance" element={<AttendanceLogs />} />
                 <Route path="students" element={<Students />} />
                 <Route path="students/:id" element={<StudentProfile />} />

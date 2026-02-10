@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, FileText, LogOut, Bell, Search, Wifi, ChevronDown, ChevronRight, UserCheck, Upload, GraduationCap } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, LogOut, Bell, Search, Wifi, ChevronDown, ChevronRight, UserCheck, Upload, GraduationCap, BarChart3 } from 'lucide-react';
 import { ModeToggle } from '@/components/mode-toggle';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,8 @@ const Sidebar = () => {
 
     const navItems = [
         { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+        { href: "/analytics", label: "AI Analytics", icon: BarChart3 },
+        { href: "/user-analytics", label: "User Behavior", icon: Users },
         { href: "/attendance", label: "Attendance Logs", icon: FileText },
     ];
 

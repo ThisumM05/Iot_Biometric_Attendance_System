@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Filter, UserPlus, Download, MoreHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -25,6 +25,118 @@ export default function StudentProfileView() {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+
+  // Load dummy data when component mounts
+  useEffect(() => {
+    // Simulate API call with timeout
+    setTimeout(() => {
+      setStudents([
+        {
+          id: 'STU001',
+          name: 'John Doe',
+          class: '10-A',
+          attendanceRate: 95,
+          daysPresent: 23,
+          lastSeen: '2026-02-11 08:15',
+          status: 'Present',
+          biometricStatus: 'Enrolled - FP001',
+          avatar: null
+        },
+        {
+          id: 'STU002',
+          name: 'Sarah Smith',
+          class: '10-A',
+          attendanceRate: 88,
+          daysPresent: 21,
+          lastSeen: '2026-02-11 08:12',
+          status: 'Present',
+          biometricStatus: 'Enrolled - FP002',
+          avatar: null
+        },
+        {
+          id: 'STU003',
+          name: 'Mike Johnson',
+          class: '10-B',
+          attendanceRate: 76,
+          daysPresent: 18,
+          lastSeen: '2026-02-11 08:45',
+          status: 'Late',
+          biometricStatus: 'Enrolled - FP003',
+          avatar: null
+        },
+        {
+          id: 'STU004',
+          name: 'Emma Wilson',
+          class: '10-A',
+          attendanceRate: 98,
+          daysPresent: 24,
+          lastSeen: '2026-02-11 08:05',
+          status: 'Present',
+          biometricStatus: 'Enrolled - FP004',
+          avatar: null
+        },
+        {
+          id: 'STU005',
+          name: 'David Lee',
+          class: '10-C',
+          attendanceRate: 62,
+          daysPresent: 15,
+          lastSeen: '2026-02-09 10:45',
+          status: 'Absent',
+          biometricStatus: 'Pending Enrollment',
+          avatar: null
+        },
+        {
+          id: 'STU006',
+          name: 'Lisa Chen',
+          class: '10-B',
+          attendanceRate: 92,
+          daysPresent: 22,
+          lastSeen: '2026-02-11 08:20',
+          status: 'Present',
+          biometricStatus: 'Enrolled - FP006',
+          avatar: null
+        },
+        {
+          id: 'STU007',
+          name: 'Alex Brown',
+          class: '10-A',
+          attendanceRate: 85,
+          daysPresent: 20,
+          lastSeen: '2026-02-11 08:30',
+          status: 'Present',
+          biometricStatus: 'Enrolled - FP007',
+          avatar: null
+        },
+        {
+          id: 'STU008',
+          name: 'Maya Patel',
+          class: '10-C',
+          attendanceRate: 90,
+          daysPresent: 21,
+          lastSeen: '2026-02-11 08:10',
+          status: 'Present',
+          biometricStatus: 'Enrolled - FP008',
+          avatar: null
+        }
+      ]);
+      setLoading(false);
+    }, 1000);
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="p-6">
+        <h1 className="text-2xl font-bold tracking-tight mb-4">User Profile View</h1>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-2"></div>
+            <p>Loading students...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const handleStudentClick = (studentId) => {
     navigate(`/students/${studentId}`);
@@ -63,9 +175,9 @@ export default function StudentProfileView() {
       {/* Header */}
       <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Students</h1>
+          <h1 className="text-2xl font-bold tracking-tight">User Profile View</h1>
           <p className="text-muted-foreground mt-1">
-            Manage student profiles and view attendance records
+            View and manage student profiles with attendance records and biometric enrollment status
           </p>
         </div>
         <div className="flex gap-3">

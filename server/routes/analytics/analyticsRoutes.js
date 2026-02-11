@@ -1,558 +1,311 @@
 import express from 'express';
-import mlAnalyticsService from '../../services/analytics-ml/mlAnalyticsService.js';
-import behaviorAnalysisService from '../../services/analytics-ml/behaviorAnalysisService.js';
-import anomalyDetectionService from '../../services/analytics-ml/anomalyDetectionService.js';
-import predictiveAnalyticsService from '../../services/analytics-ml/predictiveAnalyticsService.js';
-import visionAnalyticsService from '../../services/analytics-ml/visionAnalyticsService.js';
-import temporalAnalyticsService from '../../services/analytics-ml/temporalAnalyticsService.js';
-import { authenticateToken } from '../../middleware/auth.js';
+import User from '../../models/User.js';
+import Attendance from '../../models/Attendance.js';
 
 const router = express.Router();
 
-// Apply authentication middleware to all routes
-router.use(authenticateToken);
-
 /**
- * GET /api/analytics/dashboard
- * Get comprehensive dashboard analytics
+ * @route GET /api/analytics/summary
+ * @desc Get behavior metrics per user
  */
-router.get('/dashboard', async (req, res) => {
+router.get('/summary', async (req, res) => {
     try {
-        console.log('Generating dashboard analytics...');
-        const analytics = await mlAnalyticsService.generateDashboardAnalytics();
+        console.log('🔍 Computing user behavior metrics...');
 
-        res.json({
-            success: true,
-            message: 'Dashboard analytics generated successfully',
-            data: analytics
-        });
+        const { days = 30 } = req.query;
+        const daysBack = parseInt(days);
 
-    } catch (error) {
-        console.error('Error generating dashboard analytics:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to generate dashboard analytics',
-            error: error.message
-        });
-    }
-});
+        // Calculate date range
+        const endDate = new Date();
+        const startDate = new Date(endDate.getTime() - (daysBack * 24 * 60 * 60 * 1000));
 
-/**
- * GET /api/analytics/realtime
- * Get real-time ML insights
- */
-router.get('/realtime', async (req, res) => {
-    try {
-        const insights = await mlAnalyticsService.getRealTimeInsights();
+        // Get all employees
+        const users = await User.find({ role: 'employee', isEnrolled: true });
 
-        res.json({
-            success: true,
-            message: 'Real-time insights retrieved successfully',
-            data: insights
-        });
+        // Get attendance data within date range
+        const attendanceData = await Attendance.find({
+            timestamp: { $gte: startDate, $lte: endDate },
+            type: 'CHECK_IN'
+        }).populate('user', 'username email');
 
-    } catch (error) {
-        console.error('Error getting real-time insights:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to get real-time insights',
-            error: error.message
-        });
-    }
-});
+        // Filter out records with null users (deleted users)
+        const validAttendanceData = attendanceData.filter(record => record.user !== null);
 
-/**
- * GET /api/analytics/behavior/patterns
- * Get behavior pattern analysis for all users
- */
-router.get('/behavior/patterns', async (req, res) => {
-    try {
-        const patterns = await behaviorAnalysisService.analyzeAllUsersBehavior();
+        // Compute metrics for each user
+        const userMetrics = [];
+        const late_threshold = 9; // 9:00 AM
 
-        res.json({
-            success: true,
-            message: 'Behavior patterns analyzed successfully',
-            data: patterns
-        });
+        for (const user of users) {
+            // Filter attendance records for this user
+            const userAttendance = validAttendanceData.filter(
+                record => record.user._id.toString() === user._id.toString()
+            );
 
-    } catch (error) {
-        console.error('Error analyzing behavior patterns:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to analyze behavior patterns',
-            error: error.message
-        });
-    }
-});
+            // Calculate metrics
+            let lateArrivals = 0;
+            let onTimeArrivals = 0;
+            let totalCheckInTime = 0;
 
-/**
- * GET /api/analytics/behavior/user/:userId
- * Get behavior analysis for specific user
- */
-router.get('/behavior/user/:userId', async (req, res) => {
-    try {
-        const { userId } = req.params;
-        const insights = await mlAnalyticsService.getUserMLInsights(userId);
+            userAttendance.forEach(record => {
+                const hour = record.timestamp.getHours();
+                const minute = record.timestamp.getMinutes();
+                const timeDecimal = hour + minute / 60;
 
-        res.json({
-            success: true,
-            message: 'User behavior analysis completed',
-            data: insights
-        });
+                totalCheckInTime += timeDecimal;
 
-    } catch (error) {
-        console.error('Error analyzing user behavior:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to analyze user behavior',
-            error: error.message
-        });
-    }
-});
-
-/**
- * GET /api/analytics/predictions
- * Get predictive analytics
- */
-router.get('/predictions', async (req, res) => {
-    try {
-        const { timeframe = 7 } = req.query;
-        const predictions = await predictiveAnalyticsService.generatePredictions(parseInt(timeframe));
-
-        res.json({
-            success: true,
-            message: 'Predictions generated successfully',
-            data: predictions
-        });
-
-    } catch (error) {
-        console.error('Error generating predictions:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to generate predictions',
-            error: error.message
-        });
-    }
-});
-
-/**
- * GET /api/analytics/anomalies
- * Get anomaly detection results
- */
-router.get('/anomalies', async (req, res) => {
-    try {
-        const { timeframe = 24 } = req.query;
-        const anomalies = await anomalyDetectionService.detectAnomalies(parseInt(timeframe));
-
-        res.json({
-            success: true,
-            message: 'Anomaly detection completed',
-            data: anomalies
-        });
-
-    } catch (error) {
-        console.error('Error detecting anomalies:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to detect anomalies',
-            error: error.message
-        });
-    }
-});
-
-/**
- * GET /api/analytics/anomalies/recent
- * Get recent anomalies for dashboard alerts
- */
-router.get('/anomalies/recent', async (req, res) => {
-    try {
-        const { limit = 10 } = req.query;
-        const anomalies = await anomalyDetectionService.getRecentAnomalies(parseInt(limit));
-
-        res.json({
-            success: true,
-            message: 'Recent anomalies retrieved',
-            data: anomalies
-        });
-
-    } catch (error) {
-        console.error('Error getting recent anomalies:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to get recent anomalies',
-            error: error.message
-        });
-    }
-});
-
-/**
- * GET /api/analytics/temporal/trends
- * Get temporal trends analysis
- */
-router.get('/temporal/trends', async (req, res) => {
-    try {
-        const { timeframe = 'monthly' } = req.query;
-        const trends = await temporalAnalyticsService.generateTemporalAnalysis(timeframe);
-
-        res.json({
-            success: true,
-            message: 'Temporal trends analyzed successfully',
-            data: trends
-        });
-
-    } catch (error) {
-        console.error('Error analyzing temporal trends:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to analyze temporal trends',
-            error: error.message
-        });
-    }
-});
-
-/**
- * GET /api/analytics/vision/occupancy
- * Get occupancy analytics
- */
-router.get('/vision/occupancy', async (req, res) => {
-    try {
-        const { timeframe = 24 } = req.query;
-        const occupancy = await visionAnalyticsService.getOccupancyAnalytics(parseInt(timeframe));
-
-        res.json({
-            success: true,
-            message: 'Occupancy analytics retrieved',
-            data: occupancy
-        });
-
-    } catch (error) {
-        console.error('Error getting occupancy analytics:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to get occupancy analytics',
-            error: error.message
-        });
-    }
-});
-
-/**
- * GET /api/analytics/vision/realtime
- * Get real-time occupancy data
- */
-router.get('/vision/realtime', async (req, res) => {
-    try {
-        const { deviceId } = req.query;
-        const occupancy = await visionAnalyticsService.getRealTimeOccupancy(deviceId);
-
-        res.json({
-            success: true,
-            message: 'Real-time occupancy data retrieved',
-            data: occupancy
-        });
-
-    } catch (error) {
-        console.error('Error getting real-time occupancy:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to get real-time occupancy',
-            error: error.message
-        });
-    }
-});
-
-/**
- * POST /api/analytics/vision/process
- * Manually trigger vision processing
- */
-router.post('/vision/process', async (req, res) => {
-    try {
-        const { deviceId = 'ESP32_CAM_001', imageData } = req.body;
-        const result = await visionAnalyticsService.processCameraFrame(deviceId, imageData);
-
-        res.json({
-            success: true,
-            message: 'Vision processing completed',
-            data: result
-        });
-
-    } catch (error) {
-        console.error('Error processing vision frame:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to process vision frame',
-            error: error.message
-        });
-    }
-});
-
-/**
- * GET /api/analytics/clustering
- * Get user behavior clustering data for scatter plot visualization
- */
-router.get('/clustering', async (req, res) => {
-    try {
-        const clusterData = await behaviorAnalysisService.analyzeAllUsersBehavior();
-
-        // Transform data for scatter plot visualization
-        const scatterPlotData = [];
-        Object.entries(clusterData).forEach(([cluster, users]) => {
-            users.forEach((user, index) => {
-                scatterPlotData.push({
-                    x: user.punctuality * 100, // Punctuality percentage
-                    y: user.consistency * 100,  // Consistency percentage
-                    cluster: cluster,
-                    userId: user.userId,
-                    username: user.username,
-                    risk: user.risk,
-                    size: Math.max(10, (1 - user.risk) * 20) // Risk-based bubble size
-                });
+                if (timeDecimal > late_threshold) {
+                    lateArrivals++;
+                } else {
+                    onTimeArrivals++;
+                }
             });
-        });
 
-        res.json({
-            success: true,
-            message: 'Clustering data prepared for visualization',
-            data: {
-                clusters: clusterData,
-                scatterPlotData: scatterPlotData,
-                legendData: Object.keys(clusterData).map(cluster => ({
-                    name: cluster,
-                    count: clusterData[cluster].length
-                }))
-            }
-        });
+            const totalDays = userAttendance.length;
+            const avgCheckInTime = totalDays > 0 ? totalCheckInTime / totalDays : 0;
+            const punctualityScore = totalDays > 0 ? Math.round((onTimeArrivals / totalDays) * 100) : 0;
 
-    } catch (error) {
-        console.error('Error getting clustering data:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to get clustering data',
-            error: error.message
-        });
-    }
-});
+            // Format average check-in time
+            const formatTime = (timeDecimal) => {
+                const hours = Math.floor(timeDecimal);
+                const minutes = Math.round((timeDecimal - hours) * 60);
+                return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+            };
 
-/**
- * GET /api/analytics/forecast
- * Get time-series forecasting data for line charts
- */
-router.get('/forecast', async (req, res) => {
-    try {
-        const { days = 7 } = req.query;
-        const predictions = await predictiveAnalyticsService.generatePredictions(parseInt(days));
-
-        // Format data for line chart visualization
-        const forecast = predictions.predictions.attendanceForecast;
-
-        const chartData = {
-            historical: forecast.historical.map(day => ({
-                date: new Date(day._id.year, day._id.month - 1, day._id.day).toISOString().split('T')[0],
-                actual: day.totalAttendance,
-                onTime: day.onTimeCount,
-                late: day.lateCount
-            })),
-            predicted: forecast.forecast.map(day => ({
-                date: day.date.toISOString().split('T')[0],
-                predicted: day.predictedAttendance,
-                onTime: day.predictedOnTime,
-                late: day.predictedLate,
-                confidence: day.confidence
-            }))
-        };
-
-        res.json({
-            success: true,
-            message: 'Forecast data prepared for visualization',
-            data: {
-                chartData,
-                confidence: forecast.confidence,
-                trends: forecast.trends
-            }
-        });
-
-    } catch (error) {
-        console.error('Error getting forecast data:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to get forecast data',
-            error: error.message
-        });
-    }
-});
-
-/**
- * GET /api/analytics/heatmap
- * Get occupancy heatmap data
- */
-router.get('/heatmap', async (req, res) => {
-    try {
-        const { timeframe = 24 } = req.query;
-        const occupancyData = await visionAnalyticsService.getOccupancyAnalytics(parseInt(timeframe));
-
-        res.json({
-            success: true,
-            message: 'Heatmap data retrieved',
-            data: {
-                heatmapData: occupancyData.heatmapData,
-                summary: occupancyData.summary,
-                trends: occupancyData.occupancyTrends
-            }
-        });
-
-    } catch (error) {
-        console.error('Error getting heatmap data:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to get heatmap data',
-            error: error.message
-        });
-    }
-});
-
-// Get user behavior analytics
-router.get('/users', async (req, res) => {
-    try {
-        // For now, return dummy data - will be replaced with real ML analysis
-        const dummyUsers = [
-            {
-                id: 'U001',
-                name: 'John Doe',
-                email: 'john.doe@school.edu',
-                fingerprintId: 'FP001',
-                riskLevel: 'Low',
-                behaviorCluster: 'Early Birds',
-                averageArrival: '07:45',
-                attendanceRate: 95,
-                punctualityScore: 92,
-                lastSeen: '2026-02-11T07:43:00Z'
-            },
-            {
-                id: 'U002',
-                name: 'Sarah Smith',
-                email: 'sarah.smith@school.edu',
-                fingerprintId: 'FP002',
-                riskLevel: 'Medium',
-                behaviorCluster: 'Regular',
-                averageArrival: '08:15',
-                attendanceRate: 88,
-                punctualityScore: 78,
-                lastSeen: '2026-02-11T08:18:00Z'
-            },
-            {
-                id: 'U003',
-                name: 'Mike Johnson',
-                email: 'mike.johnson@school.edu',
-                fingerprintId: 'FP003',
-                riskLevel: 'High',
-                behaviorCluster: 'Frequently Late',
-                averageArrival: '08:45',
-                attendanceRate: 76,
-                punctualityScore: 45,
-                lastSeen: '2026-02-10T09:15:00Z'
-            },
-            {
-                id: 'U004',
-                name: 'Emma Wilson',
-                email: 'emma.wilson@school.edu',
-                fingerprintId: 'FP004',
-                riskLevel: 'Very Low',
-                behaviorCluster: 'Punctual',
-                averageArrival: '08:00',
-                attendanceRate: 98,
-                punctualityScore: 98,
-                lastSeen: '2026-02-11T07:58:00Z'
-            },
-            {
-                id: 'U005',
-                name: 'David Lee',
-                email: 'david.lee@school.edu',
-                fingerprintId: 'FP005',
-                riskLevel: 'Very High',
-                behaviorCluster: 'Irregular',
-                averageArrival: '09:30',
-                attendanceRate: 62,
-                punctualityScore: 25,
-                lastSeen: '2026-02-09T10:45:00Z'
-            }
-        ];
-
-        res.json({
-            success: true,
-            data: dummyUsers
-        });
-
-    } catch (error) {
-        console.error('Error fetching user behavior analytics:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Error fetching user behavior analytics',
-            error: error.message
-        });
-    }
-});
-
-// Get individual user behavior details
-router.get('/users/:userId', async (req, res) => {
-    try {
-        const { userId } = req.params;
-
-        // For now, return detailed dummy data - will be replaced with real ML analysis
-        const userDetails = {
-            'U001': {
-                id: 'U001',
-                name: 'John Doe',
-                email: 'john.doe@school.edu',
-                fingerprintId: 'FP001',
-                riskLevel: 'Low',
-                behaviorCluster: 'Early Birds',
-                averageArrival: '07:45',
-                attendanceRate: 95,
-                punctualityScore: 92,
-                lastSeen: '2026-02-11T07:43:00Z',
-                weeklyPattern: [
-                    { day: 'Mon', arrival: '07:45', status: 'on-time' },
-                    { day: 'Tue', arrival: '07:42', status: 'early' },
-                    { day: 'Wed', arrival: '07:48', status: 'on-time' },
-                    { day: 'Thu', arrival: '07:40', status: 'early' },
-                    { day: 'Fri', arrival: '07:50', status: 'on-time' }
-                ],
-                monthlyAttendance: [
-                    { month: 'Oct', present: 22, absent: 1 },
-                    { month: 'Nov', present: 21, absent: 2 },
-                    { month: 'Dec', present: 18, absent: 1 },
-                    { month: 'Jan', present: 23, absent: 0 },
-                    { month: 'Feb', present: 8, absent: 0 }
-                ],
-                behaviorInsights: [
-                    'Consistently arrives early (7:40-7:50 AM)',
-                    'Never missed a day this month',
-                    'Strong punctuality pattern',
-                    'Belongs to "Early Birds" cluster'
-                ],
-                anomalies: []
-            },
-            // Add other users' detailed data as needed...
-        };
-
-        const userData = userDetails[userId];
-
-        if (!userData) {
-            return res.status(404).json({
-                success: false,
-                message: 'User not found'
+            userMetrics.push({
+                user_id: user._id,
+                username: user.username,
+                email: user.email,
+                total_days: totalDays,
+                late_arrivals: lateArrivals,
+                on_time_arrivals: onTimeArrivals,
+                avg_checkin_time: avgCheckInTime,
+                avg_checkin_time_formatted: formatTime(avgCheckInTime),
+                punctuality_score: punctualityScore,
+                attendance_rate: totalDays // For the analysis period
             });
         }
 
+        console.log(`✅ Computed metrics for ${userMetrics.length} users`);
+
         res.json({
             success: true,
-            data: userData
+            data: userMetrics,
+            analysis_period: `${daysBack} days`,
+            generated_at: new Date().toISOString()
         });
 
     } catch (error) {
-        console.error('Error fetching user details:', error);
+        console.error('Error computing user summary:', error);
         res.status(500).json({
             success: false,
-            message: 'Error fetching user details',
+            message: 'Failed to compute user behavior summary',
+            error: error.message
+        });
+    }
+});
+
+/**
+ * @route GET /api/analytics/trends
+ * @desc Get time-series trends of attendance patterns
+ */
+router.get('/trends', async (req, res) => {
+    try {
+        console.log('📈 Computing attendance trends...');
+
+        const { days = 30 } = req.query;
+        const daysBack = parseInt(days);
+
+        const endDate = new Date();
+        const startDate = new Date(endDate.getTime() - (daysBack * 24 * 60 * 60 * 1000));
+
+        // Get all check-in records
+        const attendanceData = await Attendance.find({
+            timestamp: { $gte: startDate, $lte: endDate },
+            type: 'CHECK_IN'
+        }).populate('user', 'username');
+
+        // Group by date
+        const dailyData = {};
+
+        attendanceData.forEach(record => {
+            const dateKey = record.timestamp.toISOString().split('T')[0]; // YYYY-MM-DD
+
+            if (!dailyData[dateKey]) {
+                dailyData[dateKey] = {
+                    date: dateKey,
+                    total_checkins: 0,
+                    total_checkin_time: 0,
+                    late_count: 0,
+                    on_time_count: 0
+                };
+            }
+
+            const hour = record.timestamp.getHours();
+            const minute = record.timestamp.getMinutes();
+            const timeDecimal = hour + minute / 60;
+
+            dailyData[dateKey].total_checkins++;
+            dailyData[dateKey].total_checkin_time += timeDecimal;
+
+            if (timeDecimal > 9) {
+                dailyData[dateKey].late_count++;
+            } else {
+                dailyData[dateKey].on_time_count++;
+            }
+        });
+
+        // Convert to array and calculate averages
+        const trendsData = Object.values(dailyData).map(day => ({
+            date: day.date,
+            total_attendance: day.total_checkins,
+            avg_checkin_time: day.total_checkins > 0 ? day.total_checkin_time / day.total_checkins : 0,
+            late_arrivals: day.late_count,
+            on_time_arrivals: day.on_time_count,
+            punctuality_rate: day.total_checkins > 0 ? Math.round((day.on_time_count / day.total_checkins) * 100) : 0
+        })).sort((a, b) => a.date.localeCompare(b.date));
+
+        console.log(`✅ Computed trends for ${trendsData.length} days`);
+
+        res.json({
+            success: true,
+            data: trendsData,
+            analysis_period: `${daysBack} days`
+        });
+
+    } catch (error) {
+        console.error('Error computing trends:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to compute attendance trends',
+            error: error.message
+        });
+    }
+});
+
+/**
+ * @route GET /api/analytics/peak-hours
+ * @desc Get peak check-in hours distribution
+ */
+router.get('/peak-hours', async (req, res) => {
+    try {
+        console.log('⏰ Computing peak hours...');
+
+        const { days = 30 } = req.query;
+        const daysBack = parseInt(days);
+
+        const endDate = new Date();
+        const startDate = new Date(endDate.getTime() - (daysBack * 24 * 60 * 60 * 1000));
+
+        const attendanceData = await Attendance.find({
+            timestamp: { $gte: startDate, $lte: endDate },
+            type: 'CHECK_IN'
+        });
+
+        // Count check-ins by hour
+        const hourlyData = {};
+        for (let hour = 0; hour < 24; hour++) {
+            hourlyData[hour] = 0;
+        }
+
+        attendanceData.forEach(record => {
+            const hour = record.timestamp.getHours();
+            hourlyData[hour]++;
+        });
+
+        // Convert to array format for charts
+        const peakHoursData = Object.entries(hourlyData).map(([hour, count]) => ({
+            hour: `${hour.padStart(2, '0')}:00`,
+            hour_24: parseInt(hour),
+            count: count
+        })).filter(data => data.count > 0); // Only include hours with activity
+
+        console.log(`✅ Computed peak hours distribution`);
+
+        res.json({
+            success: true,
+            data: peakHoursData,
+            analysis_period: `${daysBack} days`
+        });
+
+    } catch (error) {
+        console.error('Error computing peak hours:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to compute peak hours',
+            error: error.message
+        });
+    }
+});
+
+/**
+ * @route GET /api/analytics/department-summary
+ * @desc Get aggregated department-level metrics
+ */
+router.get('/department-summary', async (req, res) => {
+    try {
+        console.log('🏢 Computing department summary...');
+
+        const { days = 30 } = req.query;
+        const daysBack = parseInt(days);
+
+        const endDate = new Date();
+        const startDate = new Date(endDate.getTime() - (daysBack * 24 * 60 * 60 * 1000));
+
+        // Get all employees
+        const totalEmployees = await User.countDocuments({ role: 'employee', isEnrolled: true });
+
+        // Get attendance data
+        const attendanceData = await Attendance.find({
+            timestamp: { $gte: startDate, $lte: endDate },
+            type: 'CHECK_IN'
+        }).populate('user', 'username');
+
+        // Calculate aggregated metrics
+        let totalLateArrivals = 0;
+        let totalOnTimeArrivals = 0;
+        let totalCheckInTime = 0;
+
+        attendanceData.forEach(record => {
+            const hour = record.timestamp.getHours();
+            const minute = record.timestamp.getMinutes();
+            const timeDecimal = hour + minute / 60;
+
+            totalCheckInTime += timeDecimal;
+
+            if (timeDecimal > 9) {
+                totalLateArrivals++;
+            } else {
+                totalOnTimeArrivals++;
+            }
+        });
+
+        const totalAttendance = totalLateArrivals + totalOnTimeArrivals;
+        const overallPunctualityRate = totalAttendance > 0
+            ? Math.round((totalOnTimeArrivals / totalAttendance) * 100)
+            : 0;
+
+        const departmentSummary = {
+            total_employees: totalEmployees,
+            total_attendance_records: totalAttendance,
+            total_late_arrivals: totalLateArrivals,
+            total_on_time_arrivals: totalOnTimeArrivals,
+            overall_punctuality_rate: overallPunctualityRate,
+            avg_daily_attendance: Math.round(totalAttendance / daysBack),
+            analysis_period: `${daysBack} days`
+        };
+
+        console.log('✅ Computed department summary');
+
+        res.json({
+            success: true,
+            data: departmentSummary
+        });
+
+    } catch (error) {
+        console.error('Error computing department summary:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to compute department summary',
             error: error.message
         });
     }

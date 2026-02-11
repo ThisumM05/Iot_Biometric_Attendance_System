@@ -15,10 +15,9 @@ import authRoutes from './routes/auth/authRoutes.js';
 import userRoutes from './routes/users/userRoutes.js';
 import attendanceRoutes from './routes/attendance/attendanceRoutes.js';
 import settingsRoutes from './routes/settings/settingsRoutes.js';
+import dashboardRoutes from './routes/dashboard/dashboardRoutes.js';
 import analyticsRoutes from './routes/analytics/analyticsRoutes.js';
-
-// Import ML Analytics Service
-import mlAnalyticsService from './services/analytics-ml/mlAnalyticsService.js';
+import mlRoutes from './routes/ml/mlRoutes.js';
 
 // Middleware
 app.use(cors({
@@ -35,9 +34,9 @@ app.use((req, res, next) => {
     const ip = req.ip || req.connection.remoteAddress || 'Unknown';
 
     // Only log auth-related endpoints to avoid spam
-    // if (url.includes('/api/auth/') || url.includes('/api/rabbitmq/')) {
-    //     console.log(`${method} ${url} | ${timestamp} | ${ip}`);
-    // }
+    if (url.includes('/api/auth/') || url.includes('/api/rabbitmq/')) {
+        console.log(`${method} ${url} | ${timestamp} | ${ip}`);
+    }
 
     next();
 });
@@ -59,8 +58,12 @@ app.use('/api/users', userRoutes);
 app.use('/api/attendance', attendanceRoutes);
 // Settings routes
 app.use('/api/settings', settingsRoutes);
-// Analytics routes (ML)
+// Dashboard routes
+app.use('/api/dashboard', dashboardRoutes);
+// Analytics routes
 app.use('/api/analytics', analyticsRoutes);
+// ML routes
+app.use('/api/ml', mlRoutes);
 
 // Database Connection
 const connectDB = async () => {
@@ -74,6 +77,9 @@ const connectDB = async () => {
     } catch (error) {
         console.error('MongoDB connection error:', error.message);
         console.log('Running server without database connection...');
+        console.log('To fix this:');
+        console.log('1. Install MongoDB: https://www.mongodb.com/try/download/community');
+        console.log('2. Or update MONGODB_URI in .env to a working connection string');
     }
 };
 
@@ -98,23 +104,6 @@ const io = new Server(httpServer, {
 
 // Pass Socket.io to RabbitMQ Service
 rabbitMQService.setSocketIo(io);
-
-// Set Socket.io globally for ML insights
-global.io = io;
-
-// Initialize ML Analytics Service
-mlAnalyticsService.initialize().catch(error => {
-    console.error('Failed to initialize ML Analytics Service:', error);
-});
-
-// Socket.IO connection handling  
-io.on('connection', (socket) => {
-    console.log('Client connected:', socket.id);
-
-    socket.on('disconnect', () => {
-        console.log('Client disconnected:', socket.id);
-    });
-});
 
 // Error handling middleware
 app.use((err, req, res, next) => {

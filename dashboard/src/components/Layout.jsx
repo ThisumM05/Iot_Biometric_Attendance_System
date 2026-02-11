@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, FileText, LogOut, Bell, Search, Wifi, ChevronDown, ChevronRight, UserCheck, Upload, GraduationCap, BarChart3 } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, LogOut, Bell, Search, Wifi, ChevronDown, ChevronRight, UserCheck, Upload, GraduationCap, BarChart3, TrendingUp } from 'lucide-react';
 import { ModeToggle } from '@/components/mode-toggle';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -15,21 +15,14 @@ const Sidebar = () => {
 
     const navItems = [
         { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-        { href: "/analytics", label: "AI Analytics", icon: BarChart3 },
-        { href: "/user-analytics", label: "User Behavior", icon: Users },
-        { href: "/attendance", label: "Attendance Logs", icon: FileText },
-    ];
-
-    // New Biometric Section
-    const biometricMenu = [
-        { href: "/users", label: "User Management", icon: Users },
-        { href: "/attendance-realtime", label: "Realtime Monitor", icon: FileText },
+        { href: "/analytics", label: "Behavior Analytics", icon: BarChart3 },
+        { href: "/forecasting", label: "Time Series Forecasting", icon: TrendingUp }
     ];
 
     const studentsSubMenu = [
-        { href: "/students", label: "Profile View", icon: UserCheck },
-        { href: "/bulk-import", label: "Bulk Import", icon: Upload },
-        { href: "/classes", label: "Classes", icon: GraduationCap },
+        { href: "/users", label: "Manage Students", icon: Users },
+        { href: "/student-behavior", label: "Student Behavior", icon: BarChart3 },
+        { href: "/classes", label: "Classes", icon: GraduationCap }
     ];
 
     const handleLogout = async () => {
@@ -79,39 +72,14 @@ const Sidebar = () => {
                     )
                 })}
 
-                <div className="pt-2 pb-2">
-                    <p className="px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                        Biometrics
-                    </p>
-                    {biometricMenu.map((item) => {
-                        const Icon = item.icon;
-                        const isActive = location.pathname === item.href;
-
-                        return (
-                            <Link key={item.href} to={item.href}>
-                                <Button
-                                    variant={isActive ? "secondary" : "ghost"}
-                                    className={cn(
-                                        "w-full justify-start gap-3 mb-1",
-                                        isActive && "bg-primary/10 text-primary font-semibold"
-                                    )}
-                                >
-                                    <Icon className="h-4 w-4" />
-                                    {item.label}
-                                </Button>
-                            </Link>
-                        )
-                    })}
-                </div>
-
                 {/* Students Menu with Dropdown */}
                 <div className="space-y-1">
                     <Button
                         onClick={() => setStudentsExpanded(!studentsExpanded)}
-                        variant={location.pathname.startsWith('/dashboard/students') ? "secondary" : "ghost"}
+                        variant={studentsSubMenu.some(item => location.pathname === item.href) ? "secondary" : "ghost"}
                         className={cn(
                             "w-full justify-start gap-3 mb-1",
-                            location.pathname.startsWith('/dashboard/students') && "bg-primary/10 text-primary font-semibold"
+                            studentsSubMenu.some(item => location.pathname === item.href) && "bg-primary/10 text-primary font-semibold"
                         )}
                     >
                         <Users className="h-4 w-4" />

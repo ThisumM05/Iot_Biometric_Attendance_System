@@ -1,6 +1,5 @@
 import amqp from 'amqplib';
 import recognitionService from '../../services/pipelines/recognitionService.js';
-import enhancedRecognitionService from '../../services/pipelines/enhancedRecognitionService.js';
 
 class RabbitMQService {
     constructor() {
@@ -55,8 +54,8 @@ class RabbitMQService {
                     console.log('[RabbitMQ] Event Received:', content);
 
                     if (content.type === 'ATTENDANCE') {
-                        // Use enhanced recognition service with ML analytics
-                        await enhancedRecognitionService.processAttendance(content);
+                        // Use recognition service for attendance processing
+                        await recognitionService.processAttendance(content);
                         // Emit real-time attendance update
                         if (this.io) this.io.emit('attendance-update', content);
                     } else if (content.type === 'ENROLL_SUCCESS') {

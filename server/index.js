@@ -15,6 +15,9 @@ import authRoutes from './routes/auth/authRoutes.js';
 import userRoutes from './routes/users/userRoutes.js';
 import attendanceRoutes from './routes/attendance/attendanceRoutes.js';
 import settingsRoutes from './routes/settings/settingsRoutes.js';
+import dashboardRoutes from './routes/dashboard/dashboardRoutes.js';
+import analyticsRoutes from './routes/analytics/analyticsRoutes.js';
+import mlRoutes from './routes/ml/mlRoutes.js';
 
 // Middleware
 app.use(cors({
@@ -55,6 +58,12 @@ app.use('/api/users', userRoutes);
 app.use('/api/attendance', attendanceRoutes);
 // Settings routes
 app.use('/api/settings', settingsRoutes);
+// Dashboard routes
+app.use('/api/dashboard', dashboardRoutes);
+// Analytics routes
+app.use('/api/analytics', analyticsRoutes);
+// ML routes
+app.use('/api/ml', mlRoutes);
 
 // Database Connection
 const connectDB = async () => {

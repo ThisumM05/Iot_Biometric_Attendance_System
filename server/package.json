@@ -20,9 +20,12 @@
     "dotenv": "^17.2.3",
     "express": "^4.18.0",
     "jsonwebtoken": "^9.0.2",
+    "math.js": "^1.1.46",
+    "ml-matrix": "^6.12.1",
     "mongoose": "^9.1.5",
     "mqtt": "^5.14.1",
     "nodemon": "^3.1.11",
+    "simple-statistics": "^7.8.8",
     "socket.io": "^4.8.3"
   }
 }

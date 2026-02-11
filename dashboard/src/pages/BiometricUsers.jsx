@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Fingerprint, RefreshCcw, Pencil, Trash, CheckCircle, Loader2, ArrowRight } from 'lucide-react';
+import { Plus, Fingerprint, RefreshCcw, Pencil, Trash, CheckCircle, Loader2, ArrowRight, Search, X } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { io } from "socket.io-client";
@@ -15,6 +15,10 @@ const BiometricUsers = () => {
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [enrollLoading, setEnrollLoading] = useState(null);
+    
+    // Search functionality
+    const [searchQuery, setSearchQuery] = useState('');
+    const [filteredUsers, setFilteredUsers] = useState([]);
 
     // Socket state
     const [socket, setSocket] = useState(null);
@@ -82,10 +86,11 @@ const BiometricUsers = () => {
         try {
             const response = await axios.get('http://localhost:5000/api/users');
             setUsers(response.data.data);
+            setFilteredUsers(response.data.data); // Initialize filtered users
         } catch (error) {
             console.error('Error fetching users:', error);
             // Fallback to dummy data when backend not available
-            setUsers([
+            const dummyUsers = [
                 {
                     _id: 'dummy1',
                     username: 'john.doe',
@@ -136,10 +141,32 @@ const BiometricUsers = () => {
                     createdAt: '2026-02-11T10:00:00Z',
                     lastSeen: null
                 }
-            ]);
+            ];
+            setUsers(dummyUsers);
+            setFilteredUsers(dummyUsers); // Initialize filtered users
         } finally {
             setLoading(false);
         }
+    };
+
+    // Search filtering effect
+    useEffect(() => {
+        if (!searchQuery.trim()) {
+            setFilteredUsers(users);
+        } else {
+            const filtered = users.filter(user => 
+                user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                user.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (user.fingerprintId && user.fingerprintId.toString().includes(searchQuery))
+            );
+            setFilteredUsers(filtered);
+        }
+    }, [searchQuery, users]);
+
+    // Clear search
+    const clearSearch = () => {
+        setSearchQuery('');
     };
 
     useEffect(() => {
@@ -375,6 +402,37 @@ const BiometricUsers = () => {
                     <CardDescription>
                         List of all users in the system. Use the action buttons to manage biometrics.
                     </CardDescription>
+                    
+                    {/* Search Bar */}
+                    <div className="flex items-center gap-2 mt-4">
+                        <div className="relative flex-1 max-w-sm">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                            <Input 
+                                type="text"
+                                placeholder="Search by name, email, role, or fingerprint ID..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="pl-10 pr-10"
+                            />
+                            {searchQuery && (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={clearSearch}
+                                    className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 hover:bg-muted"
+                                >
+                                    <X className="h-3 w-3" />
+                                </Button>
+                            )}
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                            {searchQuery ? (
+                                `${filteredUsers.length} of ${users.length} users`
+                            ) : (
+                                `${users.length} users total`
+                            )}
+                        </div>
+                    </div>
                 </CardHeader>
                 <CardContent>
                     <div className="rounded-md border max-h-[500px] overflow-y-auto scrollbar-thin relative">
@@ -391,9 +449,35 @@ const BiometricUsers = () => {
                             <TableBody>
                                 {loading ? (
                                     <TableRow>
-                                        <TableCell colSpan={5} className="text-center py-4">Loading...</TableCell>
+                                        <TableCell colSpan={5} className="text-center py-8">
+                                            <div className="flex items-center justify-center gap-2">
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                                Loading users...
+                                            </div>
+                                        </TableCell>
                                     </TableRow>
-                                ) : users.map((user) => (
+                                ) : filteredUsers.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={5} className="text-center py-8">
+                                            <div className="text-center">
+                                                {searchQuery ? (
+                                                    <div>
+                                                        <Search className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
+                                                        <p className="text-muted-foreground">No users found for "{searchQuery}"</p>
+                                                        <Button variant="link" onClick={clearSearch} className="mt-2">
+                                                            Clear search
+                                                        </Button>
+                                                    </div>
+                                                ) : (
+                                                    <div>
+                                                        <Plus className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
+                                                        <p className="text-muted-foreground">No users registered yet</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ) : filteredUsers.map((user) => (
                                     <TableRow key={user._id}>
                                         <TableCell className="font-medium">{user.username}</TableCell>
                                         <TableCell>{user.email}</TableCell>

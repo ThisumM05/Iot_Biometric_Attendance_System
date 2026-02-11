@@ -26,24 +26,62 @@ const StatCard = ({ title, value, icon: Icon, trend, trendUp, color = "default" 
 const Home = () => {
   const [loading, setLoading] = useState(true);
   const [dashboardStats, setDashboardStats] = useState({
-    totalStudents: 247,
-    presentToday: 198,
-    lateArrivals: 23,
-    absentees: 26
+    totalStudents: 0,
+    presentToday: 0,
+    lateArrivals: 0,
+    absentees: 0
   });
+  const [recentActivity, setRecentActivity] = useState([]);
+  const [error, setError] = useState(null);
 
-  const recentActivity = [
-    { id: 1, student: 'John Doe', time: '08:15', status: 'entry', device: 'Main Gate' },
-    { id: 2, student: 'Sarah Smith', time: '08:12', status: 'entry', device: 'Side Gate' },  
-    { id: 3, student: 'Mike Johnson', time: '08:45', status: 'late entry', device: 'Main Gate' },
-    { id: 4, student: 'Emma Wilson', time: '08:05', status: 'entry', device: 'Main Gate' },
-    { id: 5, student: 'David Lee', time: '09:15', status: 'very late', device: 'Side Gate' },
-    { id: 6, student: 'Lisa Chen', time: '08:20', status: 'entry', device: 'Main Gate' }
-  ];
+  // Fetch dashboard data from API
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Fetch statistics
+      const statsResponse = await fetch('http://localhost:5000/api/dashboard/stats');
+      if (!statsResponse.ok) {
+        throw new Error(`Failed to fetch stats: ${statsResponse.status}`);
+      }
+      const statsData = await statsResponse.json();
+      
+      if (statsData.success) {
+        setDashboardStats(statsData.data);
+      }
+
+      // Fetch recent activity
+      const activityResponse = await fetch('http://localhost:5000/api/dashboard/recent-activity?limit=6');
+      if (!activityResponse.ok) {
+        throw new Error(`Failed to fetch activity: ${activityResponse.status}`);
+      }
+      const activityData = await activityResponse.json();
+      
+      if (activityData.success) {
+        setRecentActivity(activityData.data);
+      }
+
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+      setError(error.message);
+      // Keep dummy data as fallback
+      setDashboardStats({
+        totalStudents: 0,
+        presentToday: 0,
+        lateArrivals: 0,
+        absentees: 0
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    // Simulate API loading
-    setTimeout(() => setLoading(false), 1000);
+    fetchDashboardData();
+    // Refresh data every 30 seconds
+    const interval = setInterval(fetchDashboardData, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   if (loading) {
@@ -52,6 +90,24 @@ const Home = () => {
         <div className="text-center">
           <div className="h-8 w-8 animate-spin border-4 border-primary border-t-transparent rounded-full mx-auto mb-2"></div>
           <p>Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <p className="text-red-600 font-medium mb-2">Failed to load dashboard data</p>
+          <p className="text-sm text-muted-foreground mb-4">{error}</p>
+          <button 
+            onClick={fetchDashboardData}
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+          >
+            Retry
+          </button>
         </div>
       </div>
     );
@@ -98,6 +154,48 @@ const Home = () => {
           color="orange"
         />
       </div>
+
+      {/* Recent Activity */}
+      {recentActivity.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Activity className="h-5 w-5" />
+              Recent Activity
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {recentActivity.map((activity) => (
+                <div key={activity.id} className="flex items-center justify-between p-3 rounded-lg border">
+                  <div className="flex items-center gap-3">
+                    <Avatar>
+                      <AvatarFallback>
+                        {activity.student.split(' ').map(n => n[0]).join('')}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-medium">{activity.student}</p>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Clock className="h-3 w-3" />
+                        {activity.time}
+                        <MapPin className="h-3 w-3" />
+                        {activity.device}
+                      </div>
+                    </div>
+                  </div>
+                  <Badge 
+                    variant={activity.status.includes('late') ? 'destructive' : 'default'}
+                    className="capitalize"
+                  >
+                    {activity.status}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

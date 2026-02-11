@@ -15,6 +15,8 @@ const Classes = lazy(() => import('./pages/Classes'));
 const EditProfile = lazy(() => import('./pages/EditProfile'));
 const BiometricUsers = lazy(() => import('./pages/BiometricUsers'));
 const StudentBehavior = lazy(() => import('./pages/StudentBehavior'));
+const Analytics = lazy(() => import('./pages/Analytics'));
+const Forecasting = lazy(() => import('./pages/Forecasting'));
 
 // Artificial delay for demonstration purposes (Optional - remove in production)
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -47,6 +49,8 @@ function App() {
                 <Route path="classes" element={<Classes />} />
                 <Route path="users" element={<BiometricUsers />} />
                 <Route path="student-behavior" element={<StudentBehavior />} />
+                <Route path="analytics" element={<Analytics />} />
+                <Route path="forecasting" element={<Forecasting />} />
               </Route>
             </Routes>
           </Suspense>

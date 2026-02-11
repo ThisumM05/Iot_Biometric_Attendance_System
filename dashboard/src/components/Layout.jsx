@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, FileText, LogOut, Bell, Search, Wifi, ChevronDown, ChevronRight, UserCheck, Upload, GraduationCap, BarChart3 } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, LogOut, Bell, Search, Wifi, ChevronDown, ChevronRight, UserCheck, Upload, GraduationCap, BarChart3, TrendingUp } from 'lucide-react';
 import { ModeToggle } from '@/components/mode-toggle';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,9 @@ const Sidebar = () => {
     const [studentsExpanded, setStudentsExpanded] = useState(true);
 
     const navItems = [
-        { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard }
+        { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+        { href: "/analytics", label: "Behavior Analytics", icon: BarChart3 },
+        { href: "/forecasting", label: "Time Series Forecasting", icon: TrendingUp }
     ];
 
     const studentsSubMenu = [

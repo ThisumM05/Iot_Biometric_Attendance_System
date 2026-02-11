@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { io } from "socket.io-client";
 import { toast } from "react-hot-toast";
 
-const BiometricUsers = () => {
+const StudentManagement = () => {
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [enrollLoading, setEnrollLoading] = useState(null);
@@ -232,24 +232,24 @@ const BiometricUsers = () => {
         <div className="p-6 space-y-6">
             <div className="flex justify-between items-center">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">User Management</h1>
-                    <p className="text-muted-foreground">Manage employees and biometric enrollment.</p>
+                    <h1 className="text-3xl font-bold tracking-tight">Student Management</h1>
+                    <p className="text-muted-foreground">Manage students and biometric enrollment.</p>
                 </div>
                 <Dialog open={isAddUserOpen} onOpenChange={onAddUserOpenChange}>
                     <DialogTrigger asChild>
-                        <Button><Plus className="mr-2 h-4 w-4" /> Add User</Button>
+                        <Button><Plus className="mr-2 h-4 w-4" /> Add Student</Button>
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-md">
                         <DialogHeader className="mb-2">
                             <DialogTitle>
-                                {wizardStep === 1 ? 'Add New User' : 'Enroll Fingerprint'}
+                                {wizardStep === 1 ? 'Add New Student' : 'Enroll Fingerprint'}
                             </DialogTitle>
                         </DialogHeader>
 
                         {wizardStep === 1 ? (
                             <form onSubmit={handleCreateUser} className="space-y-2">
                                 <div className="flex flex-col gap-3">
-                                    <Label htmlFor="username">Username</Label>
+                                    <Label htmlFor="username">Student Name</Label>
                                     <Input id="username" value={newUser.username} onChange={e => setNewUser({ ...newUser, username: e.target.value })} required />
                                 </div>
                                 <div className="flex flex-col gap-3">
@@ -338,12 +338,12 @@ const BiometricUsers = () => {
                 <Dialog open={isEditUserOpen} onOpenChange={setIsEditUserOpen}>
                     <DialogContent>
                         <DialogHeader>
-                            <DialogTitle>Edit User</DialogTitle>
+                            <DialogTitle>Edit Student</DialogTitle>
                         </DialogHeader>
                         {editingUser && (
                             <form onSubmit={handleEditUser} className="space-y-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="edit-username">Username</Label>
+                                    <Label htmlFor="edit-username">Student Name</Label>
                                     <Input id="edit-username" value={editingUser.username} onChange={e => setEditingUser({ ...editingUser, username: e.target.value })} required />
                                 </div>
                                 <div className="space-y-2">
@@ -358,11 +358,11 @@ const BiometricUsers = () => {
                                         value={editingUser.role}
                                         onChange={e => setEditingUser({ ...editingUser, role: e.target.value })}
                                     >
-                                        <option value="employee">Employee</option>
+                                        <option value="employee">Student</option>
                                         <option value="admin">Admin</option>
                                     </select>
                                 </div>
-                                <Button type="submit" className="w-full">Update User</Button>
+                                <Button type="submit" className="w-full">Update Student</Button>
                             </form>
                         )}
                     </DialogContent>
@@ -371,9 +371,9 @@ const BiometricUsers = () => {
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Registered Users</CardTitle>
+                    <CardTitle>Registered Students</CardTitle>
                     <CardDescription>
-                        List of all users in the system. Use the action buttons to manage biometrics.
+                        List of all students in the system. Use the action buttons to manage biometrics.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -381,7 +381,7 @@ const BiometricUsers = () => {
                         <Table>
                             <TableHeader className="sticky top-0 bg-secondary/90 backdrop-blur-sm z-10 w-full shadow-sm">
                                 <TableRow>
-                                    <TableHead>Username</TableHead>
+                                    <TableHead>Student Name</TableHead>
                                     <TableHead>Email</TableHead>
                                     <TableHead>Role</TableHead>
                                     <TableHead>Fingerprint ID</TableHead>
@@ -398,7 +398,7 @@ const BiometricUsers = () => {
                                         <TableCell className="font-medium">{user.username}</TableCell>
                                         <TableCell>{user.email}</TableCell>
                                         <TableCell>
-                                            <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>{user.role}</Badge>
+                                            <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>{user.role === 'employee' ? 'Student' : user.role}</Badge>
                                         </TableCell>
                                         <TableCell>
                                             {user.fingerprintId ? (
@@ -454,4 +454,4 @@ const BiometricUsers = () => {
     );
 };
 
-export default BiometricUsers;
+export default StudentManagement;

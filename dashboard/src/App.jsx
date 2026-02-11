@@ -9,17 +9,12 @@ import { Toaster } from 'react-hot-toast';
 // Lazy load pages
 const Home = lazy(() => import('./pages/Home'));
 const Login = lazy(() => import('./pages/Login'));
-const AttendanceLogs = lazy(() => import('./pages/AttendanceLogs'));
 const StudentProfile = lazy(() => import('./pages/StudentProfile'));
 const Students = lazy(() => import('./pages/Students'));
-const BulkImport = lazy(() => import('./pages/BulkImport'));
 const Classes = lazy(() => import('./pages/Classes'));
-const Notifications = lazy(() => import('./pages/Notifications'));
 const EditProfile = lazy(() => import('./pages/EditProfile'));
 const BiometricUsers = lazy(() => import('./pages/BiometricUsers'));
-const RealtimeAttendance = lazy(() => import('./pages/RealtimeAttendance'));
-const Analytics = lazy(() => import('./pages/Analytics'));
-const UserAnalytics = lazy(() => import('./pages/UserAnalytics'));
+const StudentBehavior = lazy(() => import('./pages/StudentBehavior'));
 
 // Artificial delay for demonstration purposes (Optional - remove in production)
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -46,17 +41,12 @@ function App() {
               }>
                 <Route index element={<Navigate to="/dashboard" replace />} />
                 <Route path="dashboard" element={<Home />} />
-                <Route path="analytics" element={<Analytics />} />
-                <Route path="user-analytics" element={<UserAnalytics />} />
-                <Route path="attendance" element={<AttendanceLogs />} />
                 <Route path="students" element={<Students />} />
                 <Route path="students/:id" element={<StudentProfile />} />
                 <Route path="students/:id/edit" element={<EditProfile />} />
-                <Route path="bulk-import" element={<BulkImport />} />
                 <Route path="classes" element={<Classes />} />
                 <Route path="users" element={<BiometricUsers />} />
-                <Route path="attendance-realtime" element={<RealtimeAttendance />} />
-                <Route path="notifications" element={<Notifications />} />
+                <Route path="student-behavior" element={<StudentBehavior />} />
               </Route>
             </Routes>
           </Suspense>

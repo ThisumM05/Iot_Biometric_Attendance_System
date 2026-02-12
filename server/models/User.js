@@ -11,10 +11,26 @@ const UserSchema = new mongoose.Schema({
         required: true,
         unique: true
     },
+    parentWhatsapp: {
+        type: String,
+        default: null,
+        validate: {
+            validator: function (v) {
+                // Allow null or valid phone number format (basic validation)
+                return v === null || v === '' || /^\+?[1-9]\d{1,14}$/.test(v.replace(/[\s-]/g, ''));
+            },
+            message: props => `${props.value} is not a valid phone number!`
+        }
+    },
+    class: {
+        type: String,
+        default: null,
+        trim: true
+    },
     role: {
         type: String,
-        enum: ['admin', 'employee'],
-        default: 'employee'
+        enum: ['admin', 'employee', 'student'],
+        default: 'student'
     },
     fingerprintId: {
         type: Number,

@@ -10,7 +10,8 @@ const Analytics = () => {
         userMetrics: [],
         trends: [],
         peakHours: [],
-        departmentSummary: {}
+        departmentSummary: {},
+        heatmapData: []
     });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -33,11 +34,18 @@ const Analytics = () => {
                 throw new Error('Failed to fetch analytics data');
             }
 
+            // Fetch heat map data
+            const heatmapRes = await fetch('http://localhost:5000/api/analytics/heatmap?days=60');
+            const heatmapData = await heatmapRes.json();
+            console.log('🗺️ Heat map data received:', heatmapData);
+
             setAnalyticsData({
                 userMetrics: summaryData.data,
                 trends: [],
                 peakHours: [],
                 departmentSummary: {},
+                heatmapData: heatmapData.success ? heatmapData.data : [],
+                heatmapStats: heatmapData.success ? heatmapData.stats : null,
                 analysisPeriod: summaryData.analysis_period
             });
             
@@ -101,7 +109,7 @@ const Analytics = () => {
                 <h1 className="text-3xl font-bold tracking-tight">Analytics Dashboard</h1>
                 <p className="text-muted-foreground">Comprehensive behavior pattern analysis</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                    Analyzing {analyticsData.userMetrics.length} employees
+                    Analyzing {analyticsData.userMetrics.length} students
                 </p>
             </div>
 
@@ -109,7 +117,7 @@ const Analytics = () => {
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
                 <Card>
                     <CardHeader>
-                        <CardTitle>Total Employees</CardTitle>
+                        <CardTitle>Total Students</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{analyticsData.userMetrics.length}</div>
@@ -152,13 +160,129 @@ const Analytics = () => {
                 </Card>
             </div>
 
+            {/* Attendance Heat Map */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Attendance Heat Map - Peak Times</CardTitle>
+                    <CardDescription>
+                        Attendance patterns by day of week and hour of day
+                        {analyticsData.heatmapStats && ` • ${analyticsData.heatmapStats.total_records} total check-ins analyzed`}
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="overflow-x-auto">
+                        {analyticsData.heatmapData && analyticsData.heatmapData.length > 0 ? (
+                            <div>
+                                {/* Heat Map Grid */}
+                                <div className="inline-block min-w-full">
+                                    {/* Hour labels (top) */}
+                                    <div className="flex mb-1">
+                                        <div className="w-24 flex-shrink-0"></div>
+                                        {Array.from({ length: 24 }, (_, hour) => (
+                                            <div 
+                                                key={hour}
+                                                className="w-8 h-8 flex items-center justify-center text-xs text-muted-foreground"
+                                            >
+                                                {hour < 6 || hour >= 22 ? '' : hour}
+                                            </div>
+                                        ))}
+                                    </div>
+                                    
+                                    {/* Heat map rows */}
+                                    {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((dayName, dayIdx) => {
+                                        const dayIndex = dayName === 'Sunday' ? 0 : 
+                                                        dayName === 'Monday' ? 1 : 
+                                                        dayName === 'Tuesday' ? 2 : 
+                                                        dayName === 'Wednesday' ? 3 : 
+                                                        dayName === 'Thursday' ? 4 : 
+                                                        dayName === 'Friday' ? 5 : 6;
+                                        
+                                        return (
+                                            <div key={dayName} className="flex items-center mb-1">
+                                                {/* Day label */}
+                                                <div className="w-24 flex-shrink-0 text-sm font-medium">{dayName}</div>
+                                                
+                                                {/* Hour cells */}
+                                                {Array.from({ length: 24 }, (_, hour) => {
+                                                    const dataPoint = analyticsData.heatmapData.find(
+                                                        d => d.dayIndex === dayIndex && d.hour === hour
+                                                    );
+                                                    const count = dataPoint?.count || 0;
+                                                    const intensity = dataPoint?.intensity || 0;
+                                                    
+                                                    // Color gradient from blue (low) to red (high)
+                                                    const getColor = (intensity) => {
+                                                        if (intensity === 0) return 'bg-gray-100';
+                                                        if (intensity < 20) return 'bg-blue-200';
+                                                        if (intensity < 40) return 'bg-green-300';
+                                                        if (intensity < 60) return 'bg-yellow-400';
+                                                        if (intensity < 80) return 'bg-orange-500';
+                                                        return 'bg-red-600';
+                                                    };
+                                                    
+                                                    return (
+                                                        <div
+                                                            key={hour}
+                                                            className={`w-8 h-8 border border-gray-200 ${getColor(intensity)} hover:ring-2 hover:ring-blue-500 cursor-pointer transition-all relative group`}
+                                                            title={`${dayName} ${hour}:00 - ${count} check-ins`}
+                                                        >
+                                                            {/* Tooltip on hover */}
+                                                            <div className="hidden group-hover:block absolute z-10 bg-black text-white text-xs rounded px-2 py-1 -top-8 left-1/2 transform -translate-x-1/2 whitespace-nowrap">
+                                                                {count} check-ins
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        );
+                                    })}
+                                    
+                                    {/* Legend */}
+                                    <div className="mt-4 flex items-center gap-4 text-sm">
+                                        <span className="font-medium">Attendance Intensity:</span>
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-6 h-6 bg-gray-100 border border-gray-200"></div>
+                                            <span className="text-xs">None</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-6 h-6 bg-blue-200"></div>
+                                            <span className="text-xs">Low</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-6 h-6 bg-green-300"></div>
+                                            <span className="text-xs">Moderate</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-6 h-6 bg-yellow-400"></div>
+                                            <span className="text-xs">High</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-6 h-6 bg-orange-500"></div>
+                                            <span className="text-xs">Very High</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-6 h-6 bg-red-600"></div>
+                                            <span className="text-xs">Peak</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="text-center py-8 text-muted-foreground">
+                                No heat map data available
+                            </div>
+                        )}
+                    </div>
+                </CardContent>
+            </Card>
+
             {/* Charts */}
             <div className="grid gap-6 lg:grid-cols-2">
                 {/* Punctuality Distribution */}
                 <Card>
                     <CardHeader>
                         <CardTitle>Overall Punctuality Distribution</CardTitle>
-                        <CardDescription>Total on-time vs late arrivals across all employees</CardDescription>
+                        <CardDescription>Total on-time vs late arrivals across all students</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <div className="h-80">
@@ -195,8 +319,8 @@ const Analytics = () => {
                 {/* Punctuality Score Categories */}
                 <Card>
                     <CardHeader>
-                        <CardTitle>Employee Performance Categories</CardTitle>
-                        <CardDescription>Distribution of employees by punctuality scores</CardDescription>
+                        <CardTitle>Student Performance Categories</CardTitle>
+                        <CardDescription>Distribution of students by punctuality scores</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <div className="h-80">
@@ -243,8 +367,8 @@ const Analytics = () => {
                 {/* Individual User Punctuality Bars */}
                 <Card className="lg:col-span-2">
                     <CardHeader>
-                        <CardTitle>Employee Punctuality Overview</CardTitle>
-                        <CardDescription>Punctuality scores for all employees</CardDescription>
+                        <CardTitle>Student Punctuality Overview</CardTitle>
+                        <CardDescription>Punctuality scores for all students</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <div className="h-80">

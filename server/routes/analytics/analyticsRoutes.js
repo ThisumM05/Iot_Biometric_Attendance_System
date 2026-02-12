@@ -311,4 +311,81 @@ router.get('/department-summary', async (req, res) => {
     }
 });
 
+/**
+ * @route GET /api/analytics/heatmap
+ * @desc Get attendance heat map data (day of week  hour of day)
+ */
+router.get('/heatmap', async (req, res) => {
+    try {
+        console.log(' Computing attendance heat map...');
+
+        const { days = 30 } = req.query;
+        const daysBack = parseInt(days);
+
+        const endDate = new Date();
+        const startDate = new Date(endDate.getTime() - (daysBack * 24 * 60 * 60 * 1000));
+
+        const attendanceData = await Attendance.find({
+            timestamp: { $gte: startDate, $lte: endDate },
+            type: 'CHECK_IN'
+        });
+
+        // Initialize heat map data structure
+        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const heatmapData = [];
+
+        // Create a 2D array for day of week (0-6)  hour (0-23)
+        for (let day = 0; day < 7; day++) {
+            for (let hour = 0; hour < 24; hour++) {
+                heatmapData.push({
+                    day: dayNames[day],
+                    dayIndex: day,
+                    hour: hour,
+                    hourFormatted: `${hour.toString().padStart(2, '0')}:00`,
+                    count: 0
+                });
+            }
+        }
+
+        // Count attendance records by day of week and hour
+        attendanceData.forEach(record => {
+            const day = record.timestamp.getDay(); // 0-6 (Sunday-Saturday)
+            const hour = record.timestamp.getHours(); // 0-23
+            
+            const index = day * 24 + hour;
+            if (heatmapData[index]) {
+                heatmapData[index].count++;
+            }
+        });
+
+        // Find max count for normalization
+        const maxCount = Math.max(...heatmapData.map(d => d.count), 1);
+
+        // Add intensity percentage for color mapping
+        heatmapData.forEach(item => {
+            item.intensity = maxCount > 0 ? (item.count / maxCount) * 100 : 0;
+        });
+
+        console.log(` Computed heat map with ${attendanceData.length} check-ins`);
+
+        res.json({
+            success: true,
+            data: heatmapData,
+            stats: {
+                total_records: attendanceData.length,
+                max_count: maxCount,
+                analysis_period: `${daysBack} days`
+            }
+        });
+
+    } catch (error) {
+        console.error('Error computing heat map:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to compute heat map',
+            error: error.message
+        });
+    }
+});
+
 export default router;

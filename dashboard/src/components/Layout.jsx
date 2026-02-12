@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, FileText, LogOut, Bell, Search, Wifi, ChevronDown, ChevronRight, UserCheck, Upload, GraduationCap, BarChart3, TrendingUp } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, LogOut, Bell, Search, Wifi, ChevronDown, ChevronRight, UserCheck, Upload, GraduationCap, BarChart3, TrendingUp, Users2, AlertTriangle, Eye } from 'lucide-react';
 import { ModeToggle } from '@/components/mode-toggle';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -14,15 +14,17 @@ const Sidebar = () => {
     const [studentsExpanded, setStudentsExpanded] = useState(true);
 
     const navItems = [
-        { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+        { href: "/dashboard", label: "Attendance Dashboard", icon: LayoutDashboard },
         { href: "/analytics", label: "Behavior Analytics", icon: BarChart3 },
-        { href: "/forecasting", label: "Time Series Forecasting", icon: TrendingUp }
+        { href: "/forecasting", label: "Time Series Forecasting", icon: TrendingUp },
+        { href: "/clusters", label: "Attendance Clustering", icon: Users2 },
+        { href: "/anomalies", label: "Anomaly Detection", icon: AlertTriangle },
+        { href: "/occupancy", label: "Occupancy Monitor", icon: Eye }
     ];
 
     const studentsSubMenu = [
         { href: "/users", label: "Manage Students", icon: Users },
         { href: "/student-behavior", label: "Student Behavior", icon: BarChart3 },
-        { href: "/classes", label: "Classes", icon: GraduationCap }
     ];
 
     const handleLogout = async () => {

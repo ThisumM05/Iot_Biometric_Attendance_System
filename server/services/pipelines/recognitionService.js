@@ -1,5 +1,6 @@
 import User from '../../models/User.js';
 import Attendance from '../../models/Attendance.js';
+import whatsappService from '../notification/whatsappService.js';
 
 class RecognitionService {
 
@@ -125,6 +126,33 @@ class RecognitionService {
 
             await session.save();
             console.log(`[Attendance] Saved DailyAttendance for ${user.username}. Status: ${session.status}, Duration: ${session.duration}m`);
+
+            // 5. Send WhatsApp notification to parent
+            if (user.parentWhatsapp && session.clockIn.getTime() === now.getTime()) {
+                // Only send notification on first check-in (not on check-out updates)
+                console.log(`[WhatsApp] Sending check-in notification for ${user.username}`);
+
+                whatsappService.sendCheckInNotification(
+                    user.username,
+                    user.parentWhatsapp,
+                    session.clockIn
+                ).catch(err => console.error('WhatsApp notification failed:', err));
+
+                // If student is late, send additional late notification
+                if (session.status === 'LATE') {
+                    const [startHour, startMin] = settings.shiftStart.split(':').map(Number);
+                    const shiftStartTime = new Date(now);
+                    shiftStartTime.setHours(startHour, startMin, 0, 0);
+                    const minutesLate = Math.floor((now - shiftStartTime) / 60000);
+
+                    whatsappService.sendLateArrivalNotification(
+                        user.username,
+                        user.parentWhatsapp,
+                        session.clockIn,
+                        minutesLate
+                    ).catch(err => console.error('WhatsApp late notification failed:', err));
+                }
+            }
 
         } catch (error) {
             console.error('RecognitionService Error:', error);

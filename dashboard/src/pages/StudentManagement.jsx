@@ -21,7 +21,7 @@ const StudentManagement = () => {
 
     // New User Wizard State
     const [isAddUserOpen, setIsAddUserOpen] = useState(false);
-    const [newUser, setNewUser] = useState({ username: '', email: '', role: 'employee' });
+    const [newUser, setNewUser] = useState({ username: '', email: '', role: 'student' });
     const [wizardStep, setWizardStep] = useState(1); // 1: Details, 2: Enroll
     const [createdUser, setCreatedUser] = useState(null);
     const [isScanning, setIsScanning] = useState(false);
@@ -90,7 +90,7 @@ const StudentManagement = () => {
                     _id: 'dummy1',
                     username: 'john.doe',
                     email: 'john.doe@company.com',
-                    role: 'employee',
+                    role: 'student',
                     fingerprintId: 'FP001',
                     isEnrolled: true,
                     createdAt: '2026-02-10T08:00:00Z',
@@ -110,7 +110,7 @@ const StudentManagement = () => {
                     _id: 'dummy3',
                     username: 'mike.johnson',
                     email: 'mike.johnson@company.com',
-                    role: 'employee',
+                    role: 'student',
                     fingerprintId: 'FP003',
                     isEnrolled: true,
                     createdAt: '2026-02-08T14:20:00Z',
@@ -120,7 +120,7 @@ const StudentManagement = () => {
                     _id: 'dummy4',
                     username: 'emma.wilson',
                     email: 'emma.wilson@company.com',
-                    role: 'employee',
+                    role: 'student',
                     fingerprintId: 'FP004',
                     isEnrolled: true,
                     createdAt: '2026-02-07T11:10:00Z',
@@ -130,7 +130,7 @@ const StudentManagement = () => {
                     _id: 'dummy5',
                     username: 'david.lee',
                     email: 'david.lee@company.com',
-                    role: 'employee',
+                    role: 'student',
                     fingerprintId: null,
                     isEnrolled: false,
                     createdAt: '2026-02-11T10:00:00Z',
@@ -158,7 +158,7 @@ const StudentManagement = () => {
         try {
             const response = await axios.post('http://localhost:5000/api/users', newUser);
             setCreatedUser(response.data.data);
-            setNewUser({ username: '', email: '', role: 'employee' });
+            setNewUser({ username: '', email: '', role: 'student' });
             setWizardStep(2); // Move to enrollment step
             // Don't close dialog yet
         } catch (error) {
@@ -358,7 +358,7 @@ const StudentManagement = () => {
                                         value={editingUser.role}
                                         onChange={e => setEditingUser({ ...editingUser, role: e.target.value })}
                                     >
-                                        <option value="employee">Student</option>
+                                        <option value="student">Student</option>
                                         <option value="admin">Admin</option>
                                     </select>
                                 </div>
@@ -398,7 +398,7 @@ const StudentManagement = () => {
                                         <TableCell className="font-medium">{user.username}</TableCell>
                                         <TableCell>{user.email}</TableCell>
                                         <TableCell>
-                                            <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>{user.role === 'employee' ? 'Student' : user.role}</Badge>
+                                            <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>{user.role === 'student' ? 'Student' : user.role}</Badge>
                                         </TableCell>
                                         <TableCell>
                                             {user.fingerprintId ? (

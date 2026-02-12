@@ -10,7 +10,7 @@ const router = express.Router();
  */
 router.post('/', async (req, res) => {
     try {
-        const { username, email, role } = req.body;
+        const { username, email, parentWhatsapp, class: userClass, role } = req.body;
 
         // Validation check
         const existingUser = await User.findOne({ $or: [{ email }, { username }] });
@@ -18,7 +18,7 @@ router.post('/', async (req, res) => {
             return res.status(400).json({ success: false, message: 'User already exists' });
         }
 
-        const newUser = new User({ username, email, role });
+        const newUser = new User({ username, email, parentWhatsapp, class: userClass, role: role || 'student' });
         await newUser.save();
 
         res.status(201).json({ success: true, data: newUser });
@@ -69,10 +69,10 @@ router.post('/enroll', async (req, res) => {
  */
 router.put('/:id', async (req, res) => {
     try {
-        const { username, email, role } = req.body;
+        const { username, email, parentWhatsapp, class: userClass, role } = req.body;
         const user = await User.findByIdAndUpdate(
             req.params.id,
-            { username, email, role },
+            { username, email, parentWhatsapp, class: userClass, role },
             { new: true }
         );
 

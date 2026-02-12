@@ -18,6 +18,7 @@ import settingsRoutes from './routes/settings/settingsRoutes.js';
 import dashboardRoutes from './routes/dashboard/dashboardRoutes.js';
 import analyticsRoutes from './routes/analytics/analyticsRoutes.js';
 import mlRoutes from './routes/ml/mlRoutes.js';
+import occupancyRoutes from './routes/occupancy/occupancyRoutes.js';
 
 // Middleware
 app.use(cors({
@@ -64,6 +65,8 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/analytics', analyticsRoutes);
 // ML routes
 app.use('/api/ml', mlRoutes);
+// Occupancy tracking routes
+app.use('/api/occupancy', occupancyRoutes);
 
 // Database Connection
 const connectDB = async () => {
@@ -104,6 +107,24 @@ const io = new Server(httpServer, {
 
 // Pass Socket.io to RabbitMQ Service
 rabbitMQService.setSocketIo(io);
+
+// Make Socket.io available to controllers via app
+app.set('io', io);
+
+// Socket.io connection handling
+io.on('connection', (socket) => {
+    console.log('Client connected:', socket.id);
+
+    // Join occupancy monitoring room
+    socket.on('join:occupancy', () => {
+        socket.join('occupancy-monitor');
+        console.log('Client joined occupancy monitoring room:', socket.id);
+    });
+
+    socket.on('disconnect', () => {
+        console.log('Client disconnected:', socket.id);
+    });
+});
 
 // Error handling middleware
 app.use((err, req, res, next) => {

@@ -383,6 +383,19 @@ class LateArrivalPredictionService {
     }
 
     /**
+     * Get current model metrics and status
+     */
+    getModelMetrics() {
+        return {
+            is_trained: this.isModelTrained,
+            training_samples: this.features.length,
+            feature_count: this.featureNames.length,
+            features: this.featureNames,
+            model_type: this.features.length >= 20 ? 'Random Forest' : (this.features.length >= 5 ? 'Simplified Heuristic' : 'Baseline Average')
+        };
+    }
+
+    /**
      * Predict late arrival probability for a user and date
      */
     async predictLateArrival(userId, targetDate) {

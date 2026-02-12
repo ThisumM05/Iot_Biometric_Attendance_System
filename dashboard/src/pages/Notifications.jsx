@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, MessageCircle, Mail, Settings, Send, Phone, CheckCircle2, Clock, AlertTriangle } from 'lucide-react';
+import { Bell, MessageCircle, Mail, Settings, Send, Phone, CheckCircle2, Clock, AlertTriangle, RefreshCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -11,39 +11,10 @@ import { Switch } from '@/components/ui/switch';
 import toast from 'react-hot-toast';
 
 const Notifications = () => {
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      type: 'whatsapp',
-      recipient: 'John Doe\'s Parent',
-      message: 'Your child John was marked absent today.',
-      status: 'delivered',
-      timestamp: '2 hours ago',
-      studentName: 'John Doe',
-      studentId: 'STU-2023-001'
-    },
-    {
-      id: 2,
-      type: 'email',
-      recipient: 'alice.parent@email.com',
-      message: 'Daily attendance report for Alice Smith',
-      status: 'sent',
-      timestamp: '1 hour ago',
-      studentName: 'Alice Smith',
-      studentId: 'STU-2023-002'
-    },
-    {
-      id: 3,
-      type: 'whatsapp',
-      recipient: 'Michael Jordan\'s Parent',
-      message: 'Your child arrived late today at 08:45 AM',
-      status: 'pending',
-      timestamp: '30 minutes ago',
-      studentName: 'Michael Jordan',
-      studentId: 'STU-2023-003'
-    }
-  ]);
-
+  const [notifications, setNotifications] = useState([]);
+  const [students, setStudents] = useState([]);
+  const [anomalies, setAnomalies] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [newMessage, setNewMessage] = useState('');
   const [selectedRecipients, setSelectedRecipients] = useState([]);
   const [messageTemplate, setMessageTemplate] = useState('absent');
@@ -52,11 +23,71 @@ const Notifications = () => {
     absent: 'Dear Parent, your child {studentName} was marked absent today. Please contact the school if this is an error.',
     late: 'Dear Parent, your child {studentName} arrived late today at {time}. Please ensure they arrive on time tomorrow.',
     early_dismissal: 'Dear Parent, your child {studentName} was dismissed early today at {time}.',
+    anomaly: 'Attendance Alert: Unusual pattern detected for {studentName}. Please verify with your child.',
     custom: ''
   };
 
+  // Fetch users with WhatsApp numbers
+  useEffect(() => {
+    fetchStudents();
+    fetchAnomalies();
+  }, []);
+
+  const fetchStudents = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/users');
+      const data = await response.json();
+      
+      if (data.success) {
+        // Filter students with WhatsApp numbers
+        const studentsWithWhatsApp = data.data
+          .filter(user => user.parentWhatsapp)
+          .map(user => ({
+            id: user._id,
+            name: user.username,
+            parentPhone: user.parentWhatsapp,
+            class: user.class || 'N/A',
+            email: user.email
+          }));
+        setStudents(studentsWithWhatsApp);
+      }
+    } catch (error) {
+      console.error('Error fetching students:', error);
+      toast.error('Failed to load students');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchAnomalies = async () => {
+    try {
+      const response = await fetch('/api/attendance/anomalies?limit=20');
+      const data = await response.json();
+      
+      if (data.success) {
+        // Convert anomalies to notification format
+        const anomalyNotifications = data.data.anomalies.map((anomaly, index) => ({
+          id: `anomaly-${anomaly._id}`,
+          type: 'whatsapp',
+          recipient: `${anomaly.user_name}'s Parent`,
+          message: `Anomaly Detected: ${anomaly.reason || anomaly.anomaly_types?.join(', ')}`,
+          status: anomaly.severity === 'high' || anomaly.severity === 'critical' ? 'sent' : 'pending',
+          timestamp: new Date(anomaly.detected_at).toLocaleString(),
+          studentName: anomaly.user_name,
+          severity: anomaly.severity,
+          anomalyTypes: anomaly.anomaly_types || []
+        }));
+        setAnomalies(anomalyNotifications);
+        setNotifications(anomalyNotifications);
+      }
+    } catch (error) {
+      console.error('Error fetching anomalies:', error);
+    }
+  };
+
   // Students data will be fetched from database
-  const [students, setStudents] = useState([]);
+  // const [students, setStudents] = useState([]);
 
   const [settings, setSettings] = useState({
     whatsappEnabled: true,
@@ -66,22 +97,42 @@ const Notifications = () => {
     dailyReports: false
   });
 
-  const sendWhatsAppMessage = (recipients, message) => {
-    // Simulate WhatsApp API call
-    toast.success(`WhatsApp message sent to ${recipients.length} recipient(s)`);
-    
-    const newNotification = {
-      id: Date.now(),
-      type: 'whatsapp',
-      recipient: recipients.map(r => r.name).join(', '),
-      message: message,
-      status: 'sent',
-      timestamp: 'Just now',
-      studentName: recipients.map(r => r.name).join(', '),
-      studentId: recipients.map(r => r.id).join(', ')
-    };
+  const sendWhatsAppMessage = async (recipients, message) => {
+    try {
+      // Send test WhatsApp notifications
+      const results = await Promise.all(
+        recipients.map(async (recipient) => {
+          const personalizedMessage = message.replace('{studentName}', recipient.name);
+          
+          // For demo purposes, we're simulating the API call
+          // In production, you'd call your backend endpoint
+          return {
+            success: true,
+            recipient: recipient.name,
+            phone: recipient.parentPhone
+          };
+        })
+      );
 
-    setNotifications(prev => [newNotification, ...prev]);
+      toast.success(`WhatsApp message queued for ${recipients.length} recipient(s)`);
+      
+      // Add to notification history
+      const newNotifications = recipients.map((recipient, index) => ({
+        id: Date.now() + index,
+        type: 'whatsapp',
+        recipient: `${recipient.name}'s Parent`,
+        message: message.replace('{studentName}', recipient.name),
+        status: 'sent',
+        timestamp: new Date().toLocaleString(),
+        studentName: recipient.name,
+        studentId: recipient.id
+      }));
+
+      setNotifications(prev => [...newNotifications, ...prev]);
+    } catch (error) {
+      console.error('Error sending WhatsApp:', error);
+      toast.error('Failed to send WhatsApp messages');
+    }
   };
 
   const sendBulkMessage = () => {
@@ -130,13 +181,19 @@ const Notifications = () => {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Notifications</h1>
           <p className="text-muted-foreground">
-            Send alerts and manage communication with parents
+            Send alerts and manage communication with parents ({students.length} students with WhatsApp)
           </p>
         </div>
-        <Button>
-          <Settings className="h-4 w-4 mr-2" />
-          Settings
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => { fetchStudents(); fetchAnomalies(); }}>
+            <RefreshCcw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+          <Button>
+            <Settings className="h-4 w-4 mr-2" />
+            Settings
+          </Button>
+        </div>
       </div>
 
       <Tabs defaultValue="send" className="space-y-6">
@@ -172,34 +229,48 @@ const Notifications = () => {
                     <option value="absent">Absent Alert</option>
                     <option value="late">Late Arrival</option>
                     <option value="early_dismissal">Early Dismissal</option>
+                    <option value="anomaly">Anomaly Alert</option>
                     <option value="custom">Custom Message</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium mb-2 block">Recipients</label>
-                  <div className="space-y-2 max-h-40 overflow-y-auto">
-                    {students.map((student) => (
-                      <div key={student.id} className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          id={student.id}
-                          checked={selectedRecipients.includes(student.id)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSelectedRecipients(prev => [...prev, student.id]);
-                            } else {
-                              setSelectedRecipients(prev => prev.filter(id => id !== student.id));
-                            }
-                          }}
-                          className="rounded border-gray-300"
-                        />
-                        <label htmlFor={student.id} className="text-sm">
-                          {student.name} ({student.parentPhone})
-                        </label>
-                      </div>
-                    ))}
-                  </div>
+                  <label className="text-sm font-medium mb-2 block">
+                    Recipients ({selectedRecipients.length} selected)
+                  </label>
+                  {loading ? (
+                    <div className="text-sm text-muted-foreground">Loading students...</div>
+                  ) : students.length === 0 ? (
+                    <div className="text-sm text-muted-foreground">
+                      No students with WhatsApp numbers found. Add parent WhatsApp numbers in User Management.
+                    </div>
+                  ) : (
+                    <div className="space-y-2 max-h-40 overflow-y-auto border rounded-md p-2">
+                      {students.map((student) => (
+                        <div key={student.id} className="flex items-center space-x-2 hover:bg-muted/50 p-1 rounded">
+                          <input
+                            type="checkbox"
+                            id={student.id}
+                            checked={selectedRecipients.includes(student.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedRecipients(prev => [...prev, student.id]);
+                              } else {
+                                setSelectedRecipients(prev => prev.filter(id => id !== student.id));
+                              }
+                            }}
+                            className="rounded border-gray-300"
+                          />
+                          <label htmlFor={student.id} className="text-sm flex-1 cursor-pointer">
+                            <span className="font-medium">{student.name}</span>
+                            <span className="text-muted-foreground ml-2">({student.class})</span>
+                            <br />
+                            <span className="text-xs text-muted-foreground">{student.parentPhone}</span>
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -285,36 +356,78 @@ const Notifications = () => {
         <TabsContent value="history" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Message History</CardTitle>
-              <CardDescription>
-                Recent notifications and delivery status
-              </CardDescription>
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle>Message History</CardTitle>
+                  <CardDescription>
+                    Recent notifications and delivery status ({notifications.length} total)
+                  </CardDescription>
+                </div>
+                <Button variant="outline" size="sm" onClick={fetchAnomalies}>
+                  <RefreshCcw className="h-4 w-4 mr-2" />
+                  Refresh
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {notifications.map((notification) => (
-                  <div key={notification.id} className="flex items-start space-x-3 p-4 border rounded-lg">
-                    <div className="flex items-center space-x-2">
-                      {getTypeIcon(notification.type)}
-                      {getStatusIcon(notification.status)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium">{notification.recipient}</p>
-                        <Badge variant={notification.status === 'delivered' ? 'default' : 'secondary'}>
-                          {notification.status}
-                        </Badge>
+              {loading ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  Loading notifications...
+                </div>
+              ) : notifications.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  No notifications found. Anomalies and sent messages will appear here.
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {notifications.map((notification) => (
+                    <div key={notification.id} className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-muted/30 transition-colors">
+                      <div className="flex items-center space-x-2">
+                        {getTypeIcon(notification.type)}
+                        {getStatusIcon(notification.status)}
                       </div>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {notification.message}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        {notification.timestamp} • {notification.studentName}
-                      </p>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="text-sm font-medium">{notification.recipient}</p>
+                          <div className="flex gap-2">
+                            {notification.severity && (
+                              <Badge 
+                                variant={
+                                  notification.severity === 'critical' ? 'destructive' : 
+                                  notification.severity === 'high' ? 'default' : 
+                                  'secondary'
+                                }
+                              >
+                                {notification.severity}
+                              </Badge>
+                            )}
+                            <Badge variant={
+                              notification.status === 'sent' || notification.status === 'delivered' ? 'default' : 
+                              notification.status === 'pending' ? 'secondary' : 
+                              'destructive'
+                            }>
+                              {notification.status}
+                            </Badge>
+                          </div>
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {notification.message}
+                        </p>
+                        <div className="flex items-center gap-2 mt-2">
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(notification.timestamp).toLocaleString()} • {notification.studentName}
+                          </p>
+                          {notification.anomalyTypes && (
+                            <Badge variant="outline" className="text-xs">
+                              {notification.anomalyTypes}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

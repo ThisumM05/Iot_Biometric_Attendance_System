@@ -25,7 +25,7 @@ const BiometricUsers = () => {
 
     // New User Wizard State
     const [isAddUserOpen, setIsAddUserOpen] = useState(false);
-    const [newUser, setNewUser] = useState({ username: '', email: '', role: 'employee' });
+    const [newUser, setNewUser] = useState({ username: '', email: '', parentWhatsapp: '', class: '', role: 'student' });
     const [wizardStep, setWizardStep] = useState(1); // 1: Details, 2: Enroll
     const [createdUser, setCreatedUser] = useState(null);
     const [isScanning, setIsScanning] = useState(false);
@@ -95,7 +95,7 @@ const BiometricUsers = () => {
                     _id: 'dummy1',
                     username: 'john.doe',
                     email: 'john.doe@company.com',
-                    role: 'employee',
+                    role: 'student',
                     fingerprintId: 'FP001',
                     isEnrolled: true,
                     createdAt: '2026-02-10T08:00:00Z',
@@ -115,7 +115,7 @@ const BiometricUsers = () => {
                     _id: 'dummy3',
                     username: 'mike.johnson',
                     email: 'mike.johnson@company.com',
-                    role: 'employee',
+                    role: 'student',
                     fingerprintId: 'FP003',
                     isEnrolled: true,
                     createdAt: '2026-02-08T14:20:00Z',
@@ -125,7 +125,7 @@ const BiometricUsers = () => {
                     _id: 'dummy4',
                     username: 'emma.wilson',
                     email: 'emma.wilson@company.com',
-                    role: 'employee',
+                    role: 'student',
                     fingerprintId: 'FP004',
                     isEnrolled: true,
                     createdAt: '2026-02-07T11:10:00Z',
@@ -135,7 +135,7 @@ const BiometricUsers = () => {
                     _id: 'dummy5',
                     username: 'david.lee',
                     email: 'david.lee@company.com',
-                    role: 'employee',
+                    role: 'student',
                     fingerprintId: null,
                     isEnrolled: false,
                     createdAt: '2026-02-11T10:00:00Z',
@@ -157,7 +157,7 @@ const BiometricUsers = () => {
             const filtered = users.filter(user => 
                 user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                user.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (user.class && user.class.toLowerCase().includes(searchQuery.toLowerCase())) ||
                 (user.fingerprintId && user.fingerprintId.toString().includes(searchQuery))
             );
             setFilteredUsers(filtered);
@@ -185,7 +185,7 @@ const BiometricUsers = () => {
         try {
             const response = await axios.post('http://localhost:5000/api/users', newUser);
             setCreatedUser(response.data.data);
-            setNewUser({ username: '', email: '', role: 'employee' });
+            setNewUser({ username: '', email: '', role: 'student' });
             setWizardStep(2); // Move to enrollment step
             // Don't close dialog yet
         } catch (error) {
@@ -260,7 +260,7 @@ const BiometricUsers = () => {
             <div className="flex justify-between items-center">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">User Management</h1>
-                    <p className="text-muted-foreground">Manage employees and biometric enrollment.</p>
+                    <p className="text-muted-foreground">Manage students and biometric enrollment.</p>
                 </div>
                 <Dialog open={isAddUserOpen} onOpenChange={onAddUserOpenChange}>
                     <DialogTrigger asChild>
@@ -282,6 +282,27 @@ const BiometricUsers = () => {
                                 <div className="flex flex-col gap-3">
                                     <Label htmlFor="email">Email</Label>
                                     <Input id="email" type="email" value={newUser.email} onChange={e => setNewUser({ ...newUser, email: e.target.value })} required />
+                                </div>
+                                <div className="flex flex-col gap-3">
+                                    <Label htmlFor="parentWhatsapp">WhatsApp Number (Parent)</Label>
+                                    <Input 
+                                        id="parentWhatsapp" 
+                                        type="tel" 
+                                        placeholder="+1234567890" 
+                                        value={newUser.parentWhatsapp} 
+                                        onChange={e => setNewUser({ ...newUser, parentWhatsapp: e.target.value })} 
+                                    />
+                                    <p className="text-xs text-muted-foreground">Include country code (e.g., +1 for US)</p>
+                                </div>
+                                <div className="flex flex-col gap-3">
+                                    <Label htmlFor="class">Class</Label>
+                                    <Input 
+                                        id="class" 
+                                        placeholder="e.g., 11-A, 12-B" 
+                                        value={newUser.class} 
+                                        onChange={e => setNewUser({ ...newUser, class: e.target.value })} 
+                                    />
+                                    <p className="text-xs text-muted-foreground">Student's class (e.g., 11-A)</p>
                                 </div>
                                 <Button type="submit" className="w-full group">
                                     Proceed to Enrollment
@@ -377,17 +398,24 @@ const BiometricUsers = () => {
                                     <Label htmlFor="edit-email">Email</Label>
                                     <Input id="edit-email" type="email" value={editingUser.email} onChange={e => setEditingUser({ ...editingUser, email: e.target.value })} required />
                                 </div>
+                                <div className="space-y-2">                                    <Label htmlFor="edit-parentWhatsapp">Parent WhatsApp Number</Label>
+                                    <Input 
+                                        id="edit-parentWhatsapp" 
+                                        type="tel" 
+                                        placeholder="+1234567890" 
+                                        value={editingUser?.parentWhatsapp || ''} 
+                                        onChange={(e) => setEditingUser({ ...editingUser, parentWhatsapp: e.target.value })} 
+                                    />
+                                    <p className="text-xs text-muted-foreground">Include country code for WhatsApp notifications</p>
+                                </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="edit-role">Role</Label>
-                                    <select
-                                        id="edit-role"
-                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                        value={editingUser.role}
-                                        onChange={e => setEditingUser({ ...editingUser, role: e.target.value })}
-                                    >
-                                        <option value="employee">Employee</option>
-                                        <option value="admin">Admin</option>
-                                    </select>
+                                    <Label htmlFor="edit-class">Class</Label>
+                                    <Input 
+                                        id="edit-class" 
+                                        placeholder="e.g., 11-A, 12-B" 
+                                        value={editingUser?.class || ''} 
+                                        onChange={(e) => setEditingUser({ ...editingUser, class: e.target.value })} 
+                                    />
                                 </div>
                                 <Button type="submit" className="w-full">Update User</Button>
                             </form>
@@ -409,7 +437,7 @@ const BiometricUsers = () => {
                             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                             <Input 
                                 type="text"
-                                placeholder="Search by name, email, role, or fingerprint ID..."
+                                placeholder="Search by name, email, class, or fingerprint ID..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="pl-10 pr-10"
@@ -441,7 +469,8 @@ const BiometricUsers = () => {
                                 <TableRow>
                                     <TableHead>Username</TableHead>
                                     <TableHead>Email</TableHead>
-                                    <TableHead>Role</TableHead>
+                                    <TableHead>Parent WhatsApp</TableHead>
+                                    <TableHead>Class</TableHead>
                                     <TableHead>Fingerprint ID</TableHead>
                                     <TableHead className="text-right">Actions</TableHead>
                                 </TableRow>
@@ -449,7 +478,7 @@ const BiometricUsers = () => {
                             <TableBody>
                                 {loading ? (
                                     <TableRow>
-                                        <TableCell colSpan={5} className="text-center py-8">
+                                        <TableCell colSpan={6} className="text-center py-8">
                                             <div className="flex items-center justify-center gap-2">
                                                 <Loader2 className="h-4 w-4 animate-spin" />
                                                 Loading users...
@@ -458,7 +487,7 @@ const BiometricUsers = () => {
                                     </TableRow>
                                 ) : filteredUsers.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={5} className="text-center py-8">
+                                        <TableCell colSpan={6} className="text-center py-8">
                                             <div className="text-center">
                                                 {searchQuery ? (
                                                     <div>
@@ -482,7 +511,18 @@ const BiometricUsers = () => {
                                         <TableCell className="font-medium">{user.username}</TableCell>
                                         <TableCell>{user.email}</TableCell>
                                         <TableCell>
-                                            <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>{user.role}</Badge>
+                                            {user.parentWhatsapp ? (
+                                                <span className="text-sm font-mono">{user.parentWhatsapp}</span>
+                                            ) : (
+                                                <span className="text-muted-foreground text-sm italic">Not set</span>
+                                            )}
+                                        </TableCell>
+                                        <TableCell>
+                                            {user.class ? (
+                                                <Badge variant="outline" className="font-semibold">{user.class}</Badge>
+                                            ) : (
+                                                <span className="text-muted-foreground text-sm italic">Not set</span>
+                                            )}
                                         </TableCell>
                                         <TableCell>
                                             {user.fingerprintId ? (

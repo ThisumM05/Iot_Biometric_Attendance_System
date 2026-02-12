@@ -17,6 +17,10 @@ const BiometricUsers = lazy(() => import('./pages/BiometricUsers'));
 const StudentBehavior = lazy(() => import('./pages/StudentBehavior'));
 const Analytics = lazy(() => import('./pages/Analytics'));
 const Forecasting = lazy(() => import('./pages/Forecasting'));
+const AttendanceClustersChart = lazy(() => import('./pages/AttendanceClustersChart'));
+const AnomalyDetection = lazy(() => import('./pages/AnomalyDetection'));
+const OccupancyMonitor = lazy(() => import('./pages/OccupancyMonitor'));
+const Notifications = lazy(() => import('./pages/Notifications'));
 
 // Artificial delay for demonstration purposes (Optional - remove in production)
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -51,6 +55,10 @@ function App() {
                 <Route path="student-behavior" element={<StudentBehavior />} />
                 <Route path="analytics" element={<Analytics />} />
                 <Route path="forecasting" element={<Forecasting />} />
+                <Route path="clusters" element={<AttendanceClustersChart />} />
+                <Route path="anomalies" element={<AnomalyDetection />} />
+                <Route path="occupancy" element={<OccupancyMonitor />} />
+                <Route path="notifications" element={<Notifications />} />
               </Route>
             </Routes>
           </Suspense>

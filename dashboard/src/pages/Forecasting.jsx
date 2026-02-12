@@ -390,18 +390,18 @@ const Forecasting = () => {
                             <Target className="h-5 w-5" />
                             Individual Late Arrival Prediction
                         </CardTitle>
-                        <CardDescription>Predict the likelihood of a specific employee arriving late</CardDescription>
+                        <CardDescription>Predict the likelihood of a specific student arriving late</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="grid gap-4 md:grid-cols-2">
                             <div>
-                                <label className="text-sm font-medium">Select Employee</label>
+                                <label className="text-sm font-medium">Select Student</label>
                                 <select 
                                     value={selectedUser} 
                                     onChange={(e) => setSelectedUser(e.target.value)}
                                     className="w-full mt-1 px-3 py-2 border rounded text-sm"
                                 >
-                                    <option value="">Choose employee...</option>
+                                    <option value="">Choose student...</option>
                                     {users.map(user => (
                                         <option key={user.id} value={user.id}>
                                             {user.username} ({user.role}) {!user.isEnrolled && '- Not Enrolled'}
@@ -538,7 +538,7 @@ const Forecasting = () => {
                         ) : (
                             <div className="text-center py-8 text-muted-foreground">
                                 <Target className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                                <p>Select an employee and date to generate prediction</p>
+                                <p>Select a student and date to generate prediction</p>
                             </div>
                         )}
                     </CardContent>

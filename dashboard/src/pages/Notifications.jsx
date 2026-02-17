@@ -20,10 +20,10 @@ const Notifications = () => {
   const [messageTemplate, setMessageTemplate] = useState('absent');
 
   const messageTemplates = {
-    absent: 'Dear Parent, your child {studentName} was marked absent today. Please contact the school if this is an error.',
-    late: 'Dear Parent, your child {studentName} arrived late today at {time}. Please ensure they arrive on time tomorrow.',
-    early_dismissal: 'Dear Parent, your child {studentName} was dismissed early today at {time}.',
-    anomaly: 'Attendance Alert: Unusual pattern detected for {studentName}. Please verify with your child.',
+    absent: 'Dear Parent, your child {studentName} was marked absent today ({time}). Please contact the school if this is an error.',
+    late: 'Dear Parent, your child {studentName} from class {class} arrived late today at {time}. Please ensure they arrive on time tomorrow.',
+    early_dismissal: 'Dear Parent, your child {studentName} from class {class} was dismissed early today at {time}.',
+    anomaly: 'Attendance Alert: Unusual pattern detected for {studentName} at {time}. Please verify with your child.',
     custom: ''
   };
 
@@ -36,7 +36,7 @@ const Notifications = () => {
   const fetchStudents = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/users');
+      const response = await fetch('http://localhost:5000/api/users');
       const data = await response.json();
       
       if (data.success) {
@@ -62,7 +62,7 @@ const Notifications = () => {
 
   const fetchAnomalies = async () => {
     try {
-      const response = await fetch('/api/attendance/anomalies?limit=20');
+      const response = await fetch('http://localhost:5000/api/attendance/anomalies?limit=20');
       const data = await response.json();
       
       if (data.success) {
@@ -86,8 +86,41 @@ const Notifications = () => {
     }
   };
 
-  // Students data will be fetched from database
-  // const [students, setStudents] = useState([]);
+  // Auto-update message when recipients change
+  const updateMessageTemplate = () => {
+    if (selectedRecipients.length === 0) {
+      setNewMessage(messageTemplates[messageTemplate] || '');
+      return;
+    }
+    
+    const selectedStudents = students.filter(s => selectedRecipients.includes(s.id));
+    const currentTime = new Date().toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+    
+    let updatedMessage = messageTemplates[messageTemplate] || newMessage;
+    
+    // For single student, replace with specific name
+    if (selectedStudents.length === 1) {
+      updatedMessage = updatedMessage
+        .replace(/{studentName}/g, selectedStudents[0].name)
+        .replace(/{time}/g, currentTime)
+        .replace(/{class}/g, selectedStudents[0].class);
+    } else {
+      // For multiple students, keep placeholders
+      updatedMessage = updatedMessage
+        .replace(/{time}/g, currentTime);
+    }
+    
+    setNewMessage(updatedMessage);
+  };
+  
+  // Update message when recipients or template change
+  useEffect(() => {
+    updateMessageTemplate();
+  }, [selectedRecipients, messageTemplate, students]);
 
   const [settings, setSettings] = useState({
     whatsappEnabled: true,
@@ -99,39 +132,87 @@ const Notifications = () => {
 
   const sendWhatsAppMessage = async (recipients, message) => {
     try {
-      // Send test WhatsApp notifications
       const results = await Promise.all(
         recipients.map(async (recipient) => {
-          const personalizedMessage = message.replace('{studentName}', recipient.name);
+          const currentTime = new Date().toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+          });
           
-          // For demo purposes, we're simulating the API call
-          // In production, you'd call your backend endpoint
-          return {
-            success: true,
-            recipient: recipient.name,
-            phone: recipient.parentPhone
-          };
+          const personalizedMessage = message
+            .replace(/{studentName}/g, recipient.name)
+            .replace(/{time}/g, currentTime)
+            .replace(/{class}/g, recipient.class);
+          
+          // Call actual backend API to send WhatsApp message
+          const response = await fetch('http://localhost:5000/api/notifications/whatsapp', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              studentName: recipient.name,
+              parentWhatsapp: recipient.parentPhone,
+              message: personalizedMessage,
+              type: 'manual_notification'
+            })
+          });
+          
+          const result = await response.json();
+          
+          if (result.success) {
+            console.log(`✅ WhatsApp sent to ${recipient.parentPhone}:`, personalizedMessage);
+            return {
+              success: true,
+              recipient: recipient.name,
+              phone: recipient.parentPhone,
+              messageId: result.messageId
+            };
+          } else {
+            console.error(`❌ Failed to send to ${recipient.parentPhone}:`, result.error);
+            return {
+              success: false,
+              recipient: recipient.name,
+              phone: recipient.parentPhone,
+              error: result.error
+            };
+          }
         })
       );
 
-      toast.success(`WhatsApp message queued for ${recipients.length} recipient(s)`);
+      const successful = results.filter(r => r.success).length;
+      const failed = results.filter(r => !r.success).length;
+      
+      if (successful > 0) {
+        toast.success(`✅ Successfully sent ${successful} WhatsApp message(s)`);
+      }
+      if (failed > 0) {
+        toast.error(`❌ Failed to send ${failed} message(s)`);
+      }
       
       // Add to notification history
       const newNotifications = recipients.map((recipient, index) => ({
         id: Date.now() + index,
         type: 'whatsapp',
-        recipient: `${recipient.name}'s Parent`,
-        message: message.replace('{studentName}', recipient.name),
-        status: 'sent',
+        recipient: `${recipient.name}'s Parent (${recipient.parentPhone})`,
+        message: message
+          .replace(/{studentName}/g, recipient.name)
+          .replace(/{time}/g, new Date().toLocaleTimeString())
+          .replace(/{class}/g, recipient.class),
+        status: results[index].success ? 'sent' : 'failed',
         timestamp: new Date().toLocaleString(),
         studentName: recipient.name,
         studentId: recipient.id
       }));
 
       setNotifications(prev => [...newNotifications, ...prev]);
+      
+      return results;
     } catch (error) {
       console.error('Error sending WhatsApp:', error);
-      toast.error('Failed to send WhatsApp messages');
+      toast.error('Failed to send WhatsApp messages: ' + error.message);
+      return [];
     }
   };
 
@@ -223,7 +304,8 @@ const Notifications = () => {
                     value={messageTemplate}
                     onChange={(e) => {
                       setMessageTemplate(e.target.value);
-                      setNewMessage(messageTemplates[e.target.value]);
+                      // Auto-update message when template changes
+                      setTimeout(() => updateMessageTemplate(), 100);
                     }}
                   >
                     <option value="absent">Absent Alert</option>
@@ -237,6 +319,14 @@ const Notifications = () => {
                 <div>
                   <label className="text-sm font-medium mb-2 block">
                     Recipients ({selectedRecipients.length} selected)
+                    {selectedRecipients.length > 0 && (
+                      <button 
+                        onClick={() => setSelectedRecipients([])}
+                        className="ml-2 text-xs text-red-500 hover:text-red-700"
+                      >
+                        Clear all
+                      </button>
+                    )}
                   </label>
                   {loading ? (
                     <div className="text-sm text-muted-foreground">Loading students...</div>
@@ -245,30 +335,49 @@ const Notifications = () => {
                       No students with WhatsApp numbers found. Add parent WhatsApp numbers in User Management.
                     </div>
                   ) : (
-                    <div className="space-y-2 max-h-40 overflow-y-auto border rounded-md p-2">
-                      {students.map((student) => (
-                        <div key={student.id} className="flex items-center space-x-2 hover:bg-muted/50 p-1 rounded">
-                          <input
-                            type="checkbox"
-                            id={student.id}
-                            checked={selectedRecipients.includes(student.id)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setSelectedRecipients(prev => [...prev, student.id]);
-                              } else {
-                                setSelectedRecipients(prev => prev.filter(id => id !== student.id));
-                              }
-                            }}
-                            className="rounded border-gray-300"
-                          />
-                          <label htmlFor={student.id} className="text-sm flex-1 cursor-pointer">
-                            <span className="font-medium">{student.name}</span>
-                            <span className="text-muted-foreground ml-2">({student.class})</span>
-                            <br />
-                            <span className="text-xs text-muted-foreground">{student.parentPhone}</span>
-                          </label>
+                    <div>
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm text-muted-foreground">Select students:</span>
+                        <div className="flex gap-2">
+                          <button 
+                            onClick={() => setSelectedRecipients(students.map(s => s.id))}
+                            className="text-xs text-blue-500 hover:text-blue-700"
+                          >
+                            Select All
+                          </button>
+                          <button 
+                            onClick={() => setSelectedRecipients([])}
+                            className="text-xs text-red-500 hover:text-red-700"
+                          >
+                            Clear All
+                          </button>
                         </div>
-                      ))}
+                      </div>
+                      <div className="space-y-2 max-h-40 overflow-y-auto border rounded-md p-2">
+                        {students.map((student) => (
+                          <div key={student.id} className="flex items-center space-x-2 hover:bg-muted/50 p-1 rounded">
+                            <input
+                              type="checkbox"
+                              id={student.id}
+                              checked={selectedRecipients.includes(student.id)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedRecipients(prev => [...prev, student.id]);
+                                } else {
+                                  setSelectedRecipients(prev => prev.filter(id => id !== student.id));
+                                }
+                              }}
+                              className="rounded border-gray-300"
+                            />
+                            <label htmlFor={student.id} className="text-sm flex-1 cursor-pointer">
+                              <span className="font-medium">{student.name}</span>
+                              <span className="text-muted-foreground ml-2">({student.class})</span>
+                              <br />
+                              <span className="text-xs text-muted-foreground">{student.parentPhone}</span>
+                            </label>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>

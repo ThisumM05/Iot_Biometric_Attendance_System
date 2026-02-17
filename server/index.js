@@ -6,6 +6,12 @@ import mongoose from 'mongoose';
 // Load environment variables
 dotenv.config();
 
+// Debug: Check if Twilio credentials are loaded
+console.log('🔍 Environment Check:');
+console.log(`   TWILIO_ACCOUNT_SID: ${process.env.TWILIO_ACCOUNT_SID ? 'Set' : 'Missing'}`);
+console.log(`   TWILIO_AUTH_TOKEN: ${process.env.TWILIO_AUTH_TOKEN ? 'Set' : 'Missing'}`);
+console.log(`   TWILIO_WHATSAPP_FROM: ${process.env.TWILIO_WHATSAPP_FROM || 'Missing'}`);
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -19,6 +25,8 @@ import dashboardRoutes from './routes/dashboard/dashboardRoutes.js';
 import analyticsRoutes from './routes/analytics/analyticsRoutes.js';
 import mlRoutes from './routes/ml/mlRoutes.js';
 import occupancyRoutes from './routes/occupancy/occupancyRoutes.js';
+import notificationRoutes from './routes/notifications/notificationRoutes.js';
+import whatsappService from './services/notification/whatsappService.js';
 
 // Middleware
 app.use(cors({
@@ -67,6 +75,8 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/ml', mlRoutes);
 // Occupancy tracking routes
 app.use('/api/occupancy', occupancyRoutes);
+// Notification routes (WhatsApp, Email, SMS)
+app.use('/api/notifications', notificationRoutes);
 
 // Database Connection
 const connectDB = async () => {
@@ -138,4 +148,8 @@ app.use((err, req, res, next) => {
 httpServer.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
     console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+
+    // Re-initialize WhatsApp service to ensure environment variables are loaded
+    console.log('🔄 Re-initializing WhatsApp service...');
+    whatsappService.reinitialize();
 });

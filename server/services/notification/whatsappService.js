@@ -43,6 +43,13 @@ class WhatsAppService {
     }
 
     /**
+     * Re-initialize the service (useful when environment variables change)
+     */
+    reinitialize() {
+        this.initialize();
+    }
+
+    /**
      * Format phone number for WhatsApp (ensure it has whatsapp: prefix)
      */
     formatWhatsAppNumber(phoneNumber) {
@@ -203,6 +210,38 @@ class WhatsAppService {
             });
 
             console.log(`✅ WhatsApp sent to ${parentWhatsapp}: Late arrival notification for ${studentName}`);
+            return { success: true, messageId: result.sid };
+
+        } catch (error) {
+            console.error('❌ WhatsApp send error:', error.message);
+            return { success: false, reason: error.message };
+        }
+    }
+
+    /**
+     * Send custom WhatsApp message
+     */
+    async sendCustomMessage(studentName, parentWhatsapp, customMessage) {
+        if (!this.isEnabled) {
+            console.log('📱 WhatsApp disabled - Would have sent custom message');
+            return { success: false, reason: 'WhatsApp service not enabled' };
+        }
+
+        try {
+            const formattedNumber = this.formatWhatsAppNumber(parentWhatsapp);
+            if (!formattedNumber) {
+                return { success: false, reason: 'Invalid phone number' };
+            }
+
+            const message = `${customMessage}\n\n_IoT Biometric Attendance System_`;
+
+            const result = await this.client.messages.create({
+                body: message,
+                from: this.fromNumber,
+                to: formattedNumber
+            });
+
+            console.log(`✅ WhatsApp sent to ${parentWhatsapp}: Custom message for ${studentName}`);
             return { success: true, messageId: result.sid };
 
         } catch (error) {

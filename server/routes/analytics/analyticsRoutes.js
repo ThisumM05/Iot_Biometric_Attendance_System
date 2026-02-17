@@ -19,8 +19,8 @@ router.get('/summary', async (req, res) => {
         const endDate = new Date();
         const startDate = new Date(endDate.getTime() - (daysBack * 24 * 60 * 60 * 1000));
 
-        // Get all employees
-        const users = await User.find({ role: 'employee', isEnrolled: true });
+        // Get all students
+        const users = await User.find({ role: 'student', isEnrolled: true });
 
         // Get attendance data within date range
         const attendanceData = await Attendance.find({

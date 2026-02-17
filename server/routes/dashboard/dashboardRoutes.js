@@ -15,10 +15,10 @@ router.get('/stats', async (req, res) => {
         const startOfDay = new Date(today.setHours(0, 0, 0, 0));
         const endOfDay = new Date(today.setHours(23, 59, 59, 999));
 
-        // Total enrolled users (excluding admin if you want only students)
+        // Total enrolled users (students only)
         const totalUsers = await User.countDocuments({
             isEnrolled: true,
-            role: 'employee' // Only employees, not admins
+            role: 'student' // Only students, not admins
         });
 
         // Get today's check-ins
@@ -40,7 +40,7 @@ router.get('/stats', async (req, res) => {
 
         const lateArrivals = validCheckIns.filter(record =>
             record.timestamp > lateArrivalCutoff &&
-            record.user.role === 'employee'
+            record.user.role === 'student'
         ).length;
 
         // Absentees (enrolled employees who haven't checked in today)

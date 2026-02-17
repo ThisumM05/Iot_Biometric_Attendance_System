@@ -26,102 +26,44 @@ export default function StudentProfileView() {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  // Load dummy data when component mounts
+  // Fetch students from API when component mounts
   useEffect(() => {
-    // Simulate API call with timeout
-    setTimeout(() => {
-      setStudents([
-        {
-          id: 'STU001',
-          name: 'John Doe',
-          class: '10-A',
-          attendanceRate: 95,
-          daysPresent: 23,
-          lastSeen: '2026-02-11 08:15',
-          status: 'Present',
-          biometricStatus: 'Enrolled - FP001',
-          avatar: null
-        },
-        {
-          id: 'STU002',
-          name: 'Sarah Smith',
-          class: '10-A',
-          attendanceRate: 88,
-          daysPresent: 21,
-          lastSeen: '2026-02-11 08:12',
-          status: 'Present',
-          biometricStatus: 'Enrolled - FP002',
-          avatar: null
-        },
-        {
-          id: 'STU003',
-          name: 'Mike Johnson',
-          class: '10-B',
-          attendanceRate: 76,
-          daysPresent: 18,
-          lastSeen: '2026-02-11 08:45',
-          status: 'Late',
-          biometricStatus: 'Enrolled - FP003',
-          avatar: null
-        },
-        {
-          id: 'STU004',
-          name: 'Emma Wilson',
-          class: '10-A',
-          attendanceRate: 98,
-          daysPresent: 24,
-          lastSeen: '2026-02-11 08:05',
-          status: 'Present',
-          biometricStatus: 'Enrolled - FP004',
-          avatar: null
-        },
-        {
-          id: 'STU005',
-          name: 'David Lee',
-          class: '10-C',
-          attendanceRate: 62,
-          daysPresent: 15,
-          lastSeen: '2026-02-09 10:45',
-          status: 'Absent',
-          biometricStatus: 'Pending Enrollment',
-          avatar: null
-        },
-        {
-          id: 'STU006',
-          name: 'Lisa Chen',
-          class: '10-B',
-          attendanceRate: 92,
-          daysPresent: 22,
-          lastSeen: '2026-02-11 08:20',
-          status: 'Present',
-          biometricStatus: 'Enrolled - FP006',
-          avatar: null
-        },
-        {
-          id: 'STU007',
-          name: 'Alex Brown',
-          class: '10-A',
-          attendanceRate: 85,
-          daysPresent: 20,
-          lastSeen: '2026-02-11 08:30',
-          status: 'Present',
-          biometricStatus: 'Enrolled - FP007',
-          avatar: null
-        },
-        {
-          id: 'STU008',
-          name: 'Maya Patel',
-          class: '10-C',
-          attendanceRate: 90,
-          daysPresent: 21,
-          lastSeen: '2026-02-11 08:10',
-          status: 'Present',
-          biometricStatus: 'Enrolled - FP008',
-          avatar: null
+    const fetchStudents = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('http://localhost:5000/api/users');
+        const result = await response.json();
+        
+        if (result.success) {
+          // Filter only students and format the data for display
+          const studentData = result.data
+            .filter(user => user.role === 'student')
+            .map(user => ({
+              id: user._id,
+              name: user.username,
+              class: user.class || 'Not Assigned',
+              attendanceRate: Math.floor(Math.random() * 20) + 80, // TODO: Calculate from actual attendance
+              daysPresent: `${Math.floor(Math.random() * 5) + 18}/23`, // TODO: Calculate from actual attendance
+              lastSeen: user.createdAt ? new Date(user.createdAt).toLocaleString() : 'Never',
+              status: user.isEnrolled ? 'Present' : 'Not Enrolled',
+              biometricStatus: user.isEnrolled ? `Enrolled - FP${user.fingerprintId}` : 'Not Enrolled',
+              avatar: null,
+              email: user.email,
+              parentWhatsapp: user.parentWhatsapp
+            }));
+          
+          setStudents(studentData);
+        } else {
+          console.error('Failed to fetch students:', result.message);
         }
-      ]);
-      setLoading(false);
-    }, 1000);
+      } catch (error) {
+        console.error('Error fetching students:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStudents();
   }, []);
 
   if (loading) {

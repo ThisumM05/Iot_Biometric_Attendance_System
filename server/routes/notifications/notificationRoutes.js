@@ -23,11 +23,11 @@ router.post('/whatsapp', async (req, res) => {
 
         // Send WhatsApp message
         let result;
-        
+
         if (type === 'check_in') {
             result = await whatsappService.sendCheckInNotification(
-                studentName, 
-                parentWhatsapp, 
+                studentName,
+                parentWhatsapp,
                 new Date()
             );
         } else if (type === 'anomaly') {

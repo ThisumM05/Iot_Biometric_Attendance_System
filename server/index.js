@@ -148,7 +148,7 @@ app.use((err, req, res, next) => {
 httpServer.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
     console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-    
+
     // Re-initialize WhatsApp service to ensure environment variables are loaded
     console.log('🔄 Re-initializing WhatsApp service...');
     whatsappService.reinitialize();

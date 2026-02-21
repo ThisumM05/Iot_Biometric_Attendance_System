@@ -16,6 +16,45 @@ class OccupancyService {
 
         // Alert cooldown tracking (per device)
         this.lastAlertTime = new Map();
+
+        // Initialize state from DB
+        this.initialized = false;
+    }
+
+    /**
+     * Initialize state from the latest logs in the database
+     */
+    async initialize() {
+        try {
+            console.log('[Occupancy Service] Initializing state from database...');
+
+            // Find the latest log for each unique location (which acts as our shared tracking key for clusters)
+            const latestLogs = await OccupancyLog.aggregate([
+                { $sort: { timestamp: -1 } },
+                {
+                    $group: {
+                        _id: "$location",
+                        latestCount: { $first: "$personCount" },
+                        latestTimestamp: { $first: "$timestamp" }
+                    }
+                }
+            ]);
+
+            for (const log of latestLogs) {
+                if (log._id) {
+                    this.deviceStates.set(log._id, {
+                        personCount: log.latestCount,
+                        lastUpdate: log.latestTimestamp,
+                        location: log._id
+                    });
+                }
+            }
+
+            this.initialized = true;
+            console.log(`[Occupancy Service] Initialized state for ${latestLogs.length} locations`);
+        } catch (error) {
+            console.error('[Occupancy Service] Initialization failed:', error);
+        }
     }
 
     /**
@@ -42,20 +81,27 @@ class OccupancyService {
     async updateOccupancy(data) {
         const {
             deviceId,
+            trackingKey,
             personCount,
             location = 'Main Office',
             fingerprintScanAttempt = false,
             userId = null,
-            snapshotMetadata = null
+            snapshotMetadata = null,
+            forceEventType = null,
+            eventMessage = null
         } = data;
 
+        // Use trackingKey (e.g. clusterID) as shared state key so entry+exit
+        // devices in the same location share one occupancy counter
+        const stateKey = trackingKey || deviceId;
+
         try {
-            // Get current state
-            const currentState = this.getDeviceState(deviceId);
+            // Get current state using shared key
+            const currentState = this.getDeviceState(stateKey);
             const previousCount = currentState.personCount;
 
-            // Detect event type
-            const eventType = this.detectEventType(previousCount, personCount);
+            // Detect event type (or use forced type)
+            const eventType = forceEventType || this.detectEventType(previousCount, personCount);
 
             // Determine alert status
             const alertInfo = this.evaluateAlert(
@@ -64,7 +110,12 @@ class OccupancyService {
                 deviceId
             );
 
-            // Update in-memory state
+            // If no alert but we have a descriptive message, use it
+            if (!alertInfo.triggered && eventMessage) {
+                alertInfo.message = eventMessage;
+            }
+
+            // Update in-memory state using shared key
             currentState.personCount = personCount;
             currentState.lastUpdate = new Date();
             currentState.location = location;
@@ -393,6 +444,35 @@ class OccupancyService {
             success: true,
             deviceId,
             state
+        };
+    }
+
+    /**
+     * Reset occupancy for all devices/locations
+     */
+    async resetAllOccupancy() {
+        const locations = Array.from(this.deviceStates.keys());
+
+        for (const loc of locations) {
+            const state = this.deviceStates.get(loc);
+
+            // Create a "RESET" log for each location
+            await OccupancyLog.create({
+                timestamp: new Date(),
+                personCount: 0,
+                previousCount: state.personCount,
+                eventType: 'NO_CHANGE',
+                deviceId: 'SYSTEM_RESET',
+                location: loc,
+                alertTriggered: false,
+                alertMessage: 'Occupancy manually reset to 0'
+            });
+        }
+
+        this.deviceStates.clear();
+        return {
+            success: true,
+            message: `Reset occupancy for ${locations.length} locations to 0`
         };
     }
 

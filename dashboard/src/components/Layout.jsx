@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, FileText, LogOut, Bell, Search, Wifi, ChevronDown, ChevronRight, UserCheck, Upload, GraduationCap, BarChart3, TrendingUp, Users2, AlertTriangle, Eye } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, LogOut, Bell, Search, Wifi, ChevronDown, ChevronRight, UserCheck, Upload, GraduationCap, BarChart3, TrendingUp, Users2, AlertTriangle, Eye, Server, Fingerprint } from 'lucide-react';
 import { ModeToggle } from '@/components/mode-toggle';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -19,7 +19,9 @@ const Sidebar = () => {
         { href: "/forecasting", label: "Time Series Forecasting", icon: TrendingUp },
         { href: "/clusters", label: "Attendance Clustering", icon: Users2 },
         { href: "/anomalies", label: "Anomaly Detection", icon: AlertTriangle },
-        { href: "/occupancy", label: "Occupancy Monitor", icon: Eye }
+        { href: "/occupancy", label: "Occupancy Monitor", icon: Eye },
+        { href: "/devices", label: "Device Management", icon: Server },
+        { href: "/template-sync", label: "Template Sync", icon: Fingerprint }
     ];
 
     const studentsSubMenu = [

@@ -5,6 +5,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import { ThemeProvider } from "@/components/theme-provider"
 import GlobalLoader from './components/GlobalLoader';
 import { Toaster } from 'react-hot-toast';
+import SecurityAlertProvider from './components/SecurityAlertProvider';
 
 // Lazy load pages
 const Home = lazy(() => import('./pages/Home'));
@@ -21,6 +22,9 @@ const AttendanceClustersChart = lazy(() => import('./pages/AttendanceClustersCha
 const AnomalyDetection = lazy(() => import('./pages/AnomalyDetection'));
 const OccupancyMonitor = lazy(() => import('./pages/OccupancyMonitor'));
 const Notifications = lazy(() => import('./pages/Notifications'));
+const DeviceManagement = lazy(() => import('./pages/DeviceManagement'));
+const Monitor = lazy(() => import('./pages/Monitor'));
+const TemplateSyncDashboard = lazy(() => import('./components/TemplateSyncDashboard'));
 
 // Artificial delay for demonstration purposes (Optional - remove in production)
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -59,6 +63,9 @@ function App() {
                 <Route path="anomalies" element={<AnomalyDetection />} />
                 <Route path="occupancy" element={<OccupancyMonitor />} />
                 <Route path="notifications" element={<Notifications />} />
+                <Route path="devices" element={<DeviceManagement />} />
+                <Route path="devices/:mac/monitor" element={<Monitor />} />
+                <Route path="template-sync" element={<TemplateSyncDashboard />} />
               </Route>
             </Routes>
           </Suspense>
@@ -73,6 +80,7 @@ function App() {
               },
             }}
           />
+          <SecurityAlertProvider />
         </div>
       </BrowserRouter>
     </ThemeProvider>

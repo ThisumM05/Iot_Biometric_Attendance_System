@@ -85,17 +85,37 @@ router.put('/:id', async (req, res) => {
 
 /**
  * @route DELETE /api/users/:id
- * @desc Delete user
+ * @desc Delete user and remove fingerprint from all devices
  */
 router.delete('/:id', async (req, res) => {
     try {
-        const user = await User.findByIdAndDelete(req.params.id);
+        const user = await User.findById(req.params.id);
         if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
-        // TODO: Also send DELETE command to ESP32 to remove fingerprint if exists
+        // If user has fingerprint enrolled, remove from all devices first
+        if (user.isEnrolled && user.syncedDevices.length > 0) {
+            try {
+                const templateSyncService = (await import('../sync/templateSyncRoutes.js')).default;
+                // Import the service properly
+                const { default: syncService } = await import('../../services/sync/templateSyncService.js');
+                await syncService.removeUserFromAllDevices(req.params.id);
+                console.log(`[UserDelete] Templates removed from ${user.syncedDevices.length} devices`);
+            } catch (syncError) {
+                console.error('[UserDelete] Error removing templates:', syncError);
+                // Continue with user deletion even if template removal fails
+            }
+        }
 
-        res.json({ success: true, message: 'User deleted' });
+        // Delete user from database
+        await User.findByIdAndDelete(req.params.id);
+
+        res.json({
+            success: true,
+            message: 'User deleted',
+            templatesCleared: user.isEnrolled
+        });
     } catch (error) {
+        console.error('[UserDelete] Error:', error);
         res.status(500).json({ success: false, message: error.message });
     }
 });

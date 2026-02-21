@@ -264,12 +264,40 @@ class OccupancyController {
                     deviceId,
                     state: result.state
                 });
+                // Also trigger a general refresh for the dashboard
+                io.emit('occupancy:update', { success: true });
             }
 
             res.status(200).json(result);
 
         } catch (error) {
             console.error('Error in resetOccupancy:', error);
+            res.status(500).json({
+                success: false,
+                message: error.message
+            });
+        }
+    };
+
+    /**
+     * Reset all occupancy counts
+     * POST /api/occupancy/reset-all
+     */
+    resetAllOccupancy = async (req, res) => {
+        try {
+            const result = await occupancyService.resetAllOccupancy();
+
+            // Broadcast reset via WebSocket
+            if (req.app.get('io')) {
+                const io = req.app.get('io');
+                io.emit('occupancy:reset-all', { success: true });
+                io.emit('occupancy:update', { success: true });
+            }
+
+            res.status(200).json(result);
+
+        } catch (error) {
+            console.error('Error in resetAllOccupancy:', error);
             res.status(500).json({
                 success: false,
                 message: error.message

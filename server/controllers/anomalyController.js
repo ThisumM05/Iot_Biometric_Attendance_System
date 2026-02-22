@@ -249,6 +249,20 @@ class AnomalyController {
     }
 
     /**
+     * GET /api/attendance/unread-count
+     * Get count of unread (new) anomalies
+     */
+    getUnreadCount = async (req, res) => {
+        try {
+            const count = await AttendanceAnomaly.countDocuments({ status: 'new' });
+            res.json({ success: true, count });
+        } catch (error) {
+            console.error('Error fetching unread count:', error);
+            res.status(500).json({ success: false, message: error.message });
+        }
+    }
+
+    /**
      * PATCH /api/attendance/anomalies/:id/review
      * Mark anomaly as reviewed
      */

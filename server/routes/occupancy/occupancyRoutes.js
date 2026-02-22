@@ -29,6 +29,9 @@ router.get('/current-state', occupancyController.getCurrentState);
 // Reset occupancy for a device
 router.post('/reset', occupancyController.resetOccupancy);
 
+// Reset all occupancy counts
+router.post('/reset-all', occupancyController.resetAllOccupancy);
+
 // Get configuration
 router.get('/config', occupancyController.getConfiguration);
 

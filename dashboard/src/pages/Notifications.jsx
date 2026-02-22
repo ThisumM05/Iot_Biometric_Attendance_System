@@ -38,7 +38,7 @@ const Notifications = () => {
       setLoading(true);
       const response = await fetch('http://localhost:5000/api/users');
       const data = await response.json();
-      
+
       if (data.success) {
         // Filter students with WhatsApp numbers
         const studentsWithWhatsApp = data.data
@@ -64,7 +64,7 @@ const Notifications = () => {
     try {
       const response = await fetch('http://localhost:5000/api/attendance/anomalies?limit=20');
       const data = await response.json();
-      
+
       if (data.success) {
         // Convert anomalies to notification format
         const anomalyNotifications = data.data.anomalies.map((anomaly, index) => ({
@@ -92,16 +92,16 @@ const Notifications = () => {
       setNewMessage(messageTemplates[messageTemplate] || '');
       return;
     }
-    
+
     const selectedStudents = students.filter(s => selectedRecipients.includes(s.id));
     const currentTime = new Date().toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit',
       hour12: true
     });
-    
+
     let updatedMessage = messageTemplates[messageTemplate] || newMessage;
-    
+
     // For single student, replace with specific name
     if (selectedStudents.length === 1) {
       updatedMessage = updatedMessage
@@ -113,22 +113,16 @@ const Notifications = () => {
       updatedMessage = updatedMessage
         .replace(/{time}/g, currentTime);
     }
-    
+
     setNewMessage(updatedMessage);
   };
-  
+
   // Update message when recipients or template change
   useEffect(() => {
     updateMessageTemplate();
   }, [selectedRecipients, messageTemplate, students]);
 
-  const [settings, setSettings] = useState({
-    whatsappEnabled: true,
-    emailEnabled: true,
-    autoNotifyAbsent: true,
-    autoNotifyLate: true,
-    dailyReports: false
-  });
+  // Removed local settings state to simplify UI as requested
 
   const sendWhatsAppMessage = async (recipients, message) => {
     try {
@@ -139,12 +133,12 @@ const Notifications = () => {
             minute: '2-digit',
             hour12: true
           });
-          
+
           const personalizedMessage = message
             .replace(/{studentName}/g, recipient.name)
             .replace(/{time}/g, currentTime)
             .replace(/{class}/g, recipient.class);
-          
+
           // Call actual backend API to send WhatsApp message
           const response = await fetch('http://localhost:5000/api/notifications/whatsapp', {
             method: 'POST',
@@ -158,9 +152,9 @@ const Notifications = () => {
               type: 'manual_notification'
             })
           });
-          
+
           const result = await response.json();
-          
+
           if (result.success) {
             console.log(`✅ WhatsApp sent to ${recipient.parentPhone}:`, personalizedMessage);
             return {
@@ -183,14 +177,14 @@ const Notifications = () => {
 
       const successful = results.filter(r => r.success).length;
       const failed = results.filter(r => !r.success).length;
-      
+
       if (successful > 0) {
         toast.success(`✅ Successfully sent ${successful} WhatsApp message(s)`);
       }
       if (failed > 0) {
         toast.error(`❌ Failed to send ${failed} message(s)`);
       }
-      
+
       // Add to notification history
       const newNotifications = recipients.map((recipient, index) => ({
         id: Date.now() + index,
@@ -207,7 +201,7 @@ const Notifications = () => {
       }));
 
       setNotifications(prev => [...newNotifications, ...prev]);
-      
+
       return results;
     } catch (error) {
       console.error('Error sending WhatsApp:', error);
@@ -270,22 +264,17 @@ const Notifications = () => {
             <RefreshCcw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
-          <Button>
-            <Settings className="h-4 w-4 mr-2" />
-            Settings
-          </Button>
         </div>
       </div>
 
       <Tabs defaultValue="send" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="send">Send Message</TabsTrigger>
           <TabsTrigger value="history">Message History</TabsTrigger>
-          <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
 
         <TabsContent value="send" className="space-y-6">
-          <div className="grid gap-6 md:grid-cols-2">
+          <div className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -298,8 +287,9 @@ const Notifications = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
+
                   <label className="text-sm font-medium mb-2 block">Message Template</label>
-                  <select 
+                  <select
                     className="w-full p-2 border rounded-md bg-background"
                     value={messageTemplate}
                     onChange={(e) => {
@@ -320,7 +310,7 @@ const Notifications = () => {
                   <label className="text-sm font-medium mb-2 block">
                     Recipients ({selectedRecipients.length} selected)
                     {selectedRecipients.length > 0 && (
-                      <button 
+                      <button
                         onClick={() => setSelectedRecipients([])}
                         className="ml-2 text-xs text-red-500 hover:text-red-700"
                       >
@@ -339,13 +329,13 @@ const Notifications = () => {
                       <div className="flex justify-between items-center mb-2">
                         <span className="text-sm text-muted-foreground">Select students:</span>
                         <div className="flex gap-2">
-                          <button 
+                          <button
                             onClick={() => setSelectedRecipients(students.map(s => s.id))}
                             className="text-xs text-blue-500 hover:text-blue-700"
                           >
                             Select All
                           </button>
-                          <button 
+                          <button
                             onClick={() => setSelectedRecipients([])}
                             className="text-xs text-red-500 hover:text-red-700"
                           >
@@ -392,70 +382,13 @@ const Notifications = () => {
                   />
                 </div>
 
-                <Button 
+                <Button
                   onClick={sendBulkMessage}
                   className="w-full"
                   disabled={selectedRecipients.length === 0 || !newMessage.trim()}
                 >
                   <Send className="h-4 w-4 mr-2" />
                   Send WhatsApp Message
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Quick Actions</CardTitle>
-                <CardDescription>
-                  Common notification scenarios
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Button 
-                  variant="outline" 
-                  className="w-full justify-start"
-                  onClick={() => {
-                    setMessageTemplate('absent');
-                    setNewMessage(messageTemplates.absent);
-                  }}
-                >
-                  <AlertTriangle className="h-4 w-4 mr-2 text-red-500" />
-                  Notify Absent Students
-                </Button>
-                
-                <Button 
-                  variant="outline" 
-                  className="w-full justify-start"
-                  onClick={() => {
-                    setMessageTemplate('late');
-                    setNewMessage(messageTemplates.late);
-                  }}
-                >
-                  <Clock className="h-4 w-4 mr-2 text-yellow-500" />
-                  Notify Late Arrivals
-                </Button>
-                
-                <Button 
-                  variant="outline" 
-                  className="w-full justify-start"
-                  onClick={() => {
-                    toast.success('Daily reports will be sent at 3:00 PM');
-                  }}
-                >
-                  <Mail className="h-4 w-4 mr-2 text-blue-500" />
-                  Send Daily Reports
-                </Button>
-
-                <Button 
-                  variant="outline" 
-                  className="w-full justify-start"
-                  onClick={() => {
-                    const absentStudents = students.slice(0, 2); // Simulate absent students
-                    sendWhatsAppMessage(absentStudents, messageTemplates.absent);
-                  }}
-                >
-                  <MessageCircle className="h-4 w-4 mr-2 text-green-500" />
-                  Bulk Absence Alert
                 </Button>
               </CardContent>
             </Card>
@@ -500,20 +433,20 @@ const Notifications = () => {
                           <p className="text-sm font-medium">{notification.recipient}</p>
                           <div className="flex gap-2">
                             {notification.severity && (
-                              <Badge 
+                              <Badge
                                 variant={
-                                  notification.severity === 'critical' ? 'destructive' : 
-                                  notification.severity === 'high' ? 'default' : 
-                                  'secondary'
+                                  notification.severity === 'critical' ? 'destructive' :
+                                    notification.severity === 'high' ? 'default' :
+                                      'secondary'
                                 }
                               >
                                 {notification.severity}
                               </Badge>
                             )}
                             <Badge variant={
-                              notification.status === 'sent' || notification.status === 'delivered' ? 'default' : 
-                              notification.status === 'pending' ? 'secondary' : 
-                              'destructive'
+                              notification.status === 'sent' || notification.status === 'delivered' ? 'default' :
+                                notification.status === 'pending' ? 'secondary' :
+                                  'destructive'
                             }>
                               {notification.status}
                             </Badge>
@@ -541,84 +474,9 @@ const Notifications = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="settings" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Notification Settings</CardTitle>
-              <CardDescription>
-                Configure automated notifications and alerts
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">WhatsApp Notifications</p>
-                  <p className="text-sm text-muted-foreground">Enable WhatsApp alerts for parents</p>
-                </div>
-                <Switch 
-                  checked={settings.whatsappEnabled}
-                  onCheckedChange={(checked) => 
-                    setSettings(prev => ({ ...prev, whatsappEnabled: checked }))
-                  }
-                />
-              </div>
 
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">Email Notifications</p>
-                  <p className="text-sm text-muted-foreground">Send email alerts and reports</p>
-                </div>
-                <Switch 
-                  checked={settings.emailEnabled}
-                  onCheckedChange={(checked) => 
-                    setSettings(prev => ({ ...prev, emailEnabled: checked }))
-                  }
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">Auto-notify Absences</p>
-                  <p className="text-sm text-muted-foreground">Automatically notify parents of absences</p>
-                </div>
-                <Switch 
-                  checked={settings.autoNotifyAbsent}
-                  onCheckedChange={(checked) => 
-                    setSettings(prev => ({ ...prev, autoNotifyAbsent: checked }))
-                  }
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">Auto-notify Late Arrivals</p>
-                  <p className="text-sm text-muted-foreground">Automatically notify parents of late arrivals</p>
-                </div>
-                <Switch 
-                  checked={settings.autoNotifyLate}
-                  onCheckedChange={(checked) => 
-                    setSettings(prev => ({ ...prev, autoNotifyLate: checked }))
-                  }
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">Daily Reports</p>
-                  <p className="text-sm text-muted-foreground">Send daily attendance reports to parents</p>
-                </div>
-                <Switch 
-                  checked={settings.dailyReports}
-                  onCheckedChange={(checked) => 
-                    setSettings(prev => ({ ...prev, dailyReports: checked }))
-                  }
-                />
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
       </Tabs>
-    </div>
+    </div >
   );
 };
 

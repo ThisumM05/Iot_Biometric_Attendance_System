@@ -69,11 +69,16 @@ router.get('/stats', async (req, res) => {
 router.get('/recent-activity', async (req, res) => {
     try {
         const limit = parseInt(req.query.limit) || 10;
+        const now = new Date();
+        const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
-        const recentActivity = await Attendance.find()
+        const recentActivity = await Attendance.find({
+            timestamp: { $gte: yesterday, $lte: now }
+        })
             .populate('user', 'username email')
             .sort({ timestamp: -1 })
             .limit(limit);
+
 
         // Filter out records with null users and format the response
         const formattedActivity = recentActivity
@@ -81,14 +86,10 @@ router.get('/recent-activity', async (req, res) => {
             .map(record => ({
                 id: record._id,
                 student: record.user.username,
-                time: record.timestamp.toLocaleTimeString('en-US', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    hour12: false
-                }),
+                timestamp: record.timestamp, // Send raw Date object/ISO string
                 status: record.type.toLowerCase().replace('_', ' '),
-                device: record.deviceId,
-                timestamp: record.timestamp
+                device: record.deviceId
+
             }));
 
         res.json({

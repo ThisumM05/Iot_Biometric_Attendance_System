@@ -1,182 +1,93 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, Users, Activity, Settings, Bell, BellOff, CheckCircle2 } from 'lucide-react';
+import { AlertTriangle, Activity, Shield, LogIn, LogOut, Clock, RefreshCw } from 'lucide-react';
 import io from 'socket.io-client';
 
 const OccupancyMonitor = () => {
-  const [currentStates, setCurrentStates] = useState([]);
-  const [activeAlerts, setActiveAlerts] = useState([]);
-  const [statistics, setStatistics] = useState(null);
-  const [config, setConfig] = useState(null);
+  const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [soundEnabled, setSoundEnabled] = useState(true);
-  const [socket, setSocket] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Initialize Socket.io connection
+  const fetchLogs = useCallback(async () => {
+    try {
+      const response = await fetch('/api/occupancy/logs?limit=200');
+      const data = await response.json();
+      if (data.success) {
+        setLogs(data.data?.logs || []);
+      }
+    } catch (error) {
+      console.error('Error fetching logs:', error);
+    }
+  }, []);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchLogs();
+    setRefreshing(false);
+  };
+
+  const handleResetAll = async () => {
+    if (window.confirm('Are you sure you want to reset all occupancy counts to 0? This will clear all current status.')) {
+      try {
+        const response = await fetch('/api/occupancy/reset-all', { method: 'POST' });
+        const data = await response.json();
+        if (data.success) {
+          await fetchLogs();
+          alert('All occupancy counts have been reset.');
+        }
+      } catch (error) {
+        console.error('Error resetting occupancy:', error);
+      }
+    }
+  };
+
   useEffect(() => {
     const newSocket = io('http://localhost:5000', {
       transports: ['websocket'],
       reconnection: true
     });
 
-    newSocket.on('connect', () => {
-      console.log('Connected to occupancy monitoring');
-      newSocket.emit('join:occupancy');
-    });
+    newSocket.on('connect', () => newSocket.emit('join:occupancy'));
+    newSocket.on('occupancy:update', fetchLogs);
+    newSocket.on('occupancy:alert', fetchLogs);
+    newSocket.on('occupancy:alert:resolved', fetchLogs);
+    newSocket.on('occupancy:reset-all', fetchLogs);
 
-    // Listen for occupancy updates
-    newSocket.on('occupancy:update', (data) => {
-      console.log('Occupancy update:', data);
-      fetchCurrentStates();
-    });
+    return () => newSocket.disconnect();
+  }, [fetchLogs]);
 
-    // Listen for alerts
-    newSocket.on('occupancy:alert', (data) => {
-      console.log('Occupancy alert:', data);
-      if (soundEnabled) {
-        playAlertSound(data.severity);
-      }
-      fetchActiveAlerts();
-      fetchStatistics();
-    });
-
-    // Listen for alert resolutions
-    newSocket.on('occupancy:alert:resolved', (data) => {
-      console.log('Alert resolved:', data);
-      fetchActiveAlerts();
-    });
-
-    setSocket(newSocket);
-
-    return () => {
-      newSocket.disconnect();
-    };
-  }, [soundEnabled]);
-
-  // Fetch initial data
   useEffect(() => {
-    fetchAllData();
-  }, []);
+    fetchLogs().then(() => setLoading(false));
+  }, [fetchLogs]);
 
-  const fetchAllData = async () => {
-    setLoading(true);
-    await Promise.all([
-      fetchCurrentStates(),
-      fetchActiveAlerts(),
-      fetchStatistics(),
-      fetchConfig()
-    ]);
-    setLoading(false);
-  };
+  // --- Derived stats from logs ---
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
-  const fetchCurrentStates = async () => {
-    try {
-      const response = await fetch('/api/occupancy/current-state');
-      const data = await response.json();
-      if (data.success) {
-        setCurrentStates(data.states || []);
-      }
-    } catch (error) {
-      console.error('Error fetching current states:', error);
+  const todayLogs = logs.filter(l => new Date(l.timestamp) >= today);
+  const todayEntry = todayLogs.filter(l => l.eventType === 'ENTRY').length;
+  const todayExit = todayLogs.filter(l => l.eventType === 'EXIT').length;
+  const lastEvent = logs[0]; // already sorted desc
+
+  // Current occupancy: use the most recent personCount per location
+  // logs is sorted desc, so the first entry per location is the most recent one
+  const locationLatest = {};
+  logs.forEach(l => {
+    if (l.location && locationLatest[l.location] === undefined) {
+      locationLatest[l.location] = l.personCount ?? 0;
     }
-  };
+  });
+  const totalOccupancy = Object.values(locationLatest).reduce((sum, v) => sum + v, 0);
 
-  const fetchActiveAlerts = async () => {
-    try {
-      const response = await fetch('/api/occupancy/alerts/active');
-      const data = await response.json();
-      if (data.success) {
-        setActiveAlerts(data.alerts);
-      }
-    } catch (error) {
-      console.error('Error fetching active alerts:', error);
+  const getEventBadge = (eventType) => {
+    switch (eventType) {
+      case 'ENTRY': return <Badge className="bg-green-600 text-white">ENTRY</Badge>;
+      case 'EXIT': return <Badge className="bg-blue-600 text-white">EXIT</Badge>;
+      case 'NO_CHANGE': return <Badge variant="outline">NO CHANGE</Badge>;
+      default: return <Badge variant="secondary">{eventType || '—'}</Badge>;
     }
-  };
-
-  const fetchStatistics = async () => {
-    try {
-      const response = await fetch('/api/occupancy/statistics');
-      const data = await response.json();
-      if (data.success) {
-        setStatistics(data.data);
-      }
-    } catch (error) {
-      console.error('Error fetching statistics:', error);
-    }
-  };
-
-  const fetchConfig = async () => {
-    try {
-      const response = await fetch('/api/occupancy/config');
-      const data = await response.json();
-      if (data.success) {
-        setConfig(data.config);
-      }
-    } catch (error) {
-      console.error('Error fetching config:', error);
-    }
-  };
-
-  const handleResolveAlert = async (alertId) => {
-    try {
-      const response = await fetch(`/api/occupancy/alerts/${alertId}/resolve`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          resolvedBy: 'admin', // Replace with actual user ID
-          notes: 'Resolved from dashboard'
-        })
-      });
-
-      if (response.ok) {
-        fetchActiveAlerts();
-        fetchStatistics();
-      }
-    } catch (error) {
-      console.error('Error resolving alert:', error);
-    }
-  };
-
-  const handleResetDevice = async (deviceId) => {
-    try {
-      const response = await fetch('/api/occupancy/reset', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ deviceId })
-      });
-
-      if (response.ok) {
-        fetchCurrentStates();
-      }
-    } catch (error) {
-      console.error('Error resetting device:', error);
-    }
-  };
-
-  const playAlertSound = (severity) => {
-    const audio = new Audio(severity === 'CRITICAL' ? '/sounds/critical-alert.mp3' : '/sounds/warning-alert.mp3');
-    audio.play().catch(err => console.log('Audio play failed:', err));
-  };
-
-  const getSeverityColor = (severity) => {
-    switch (severity) {
-      case 'CRITICAL':
-        return 'destructive';
-      case 'WARNING':
-        return 'default';
-      default:
-        return 'secondary';
-    }
-  };
-
-  const getOccupancyColor = (count, maxAllowed) => {
-    if (count === 0) return 'text-gray-500';
-    if (count <= maxAllowed) return 'text-green-600';
-    if (count === maxAllowed + 1) return 'text-yellow-600';
-    return 'text-red-600';
   };
 
   if (loading) {
@@ -192,201 +103,128 @@ const OccupancyMonitor = () => {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
+      {/* Header */}
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Occupancy Monitoring</h1>
+        <h1 className="text-3xl font-bold">Occupancy Log</h1>
         <div className="flex gap-2">
-          <Button
-            variant={soundEnabled ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setSoundEnabled(!soundEnabled)}
-          >
-            {soundEnabled ? <Bell className="w-4 h-4 mr-2" /> : <BellOff className="w-4 h-4 mr-2" />}
-            Alerts {soundEnabled ? 'On' : 'Off'}
+          <Button variant="destructive" size="sm" onClick={handleResetAll}>
+            <Shield className="w-4 h-4 mr-2" />
+            Reset All
           </Button>
-          <Button variant="outline" size="sm" onClick={fetchAllData}>
-            <Activity className="w-4 h-4 mr-2" />
-            Refresh
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing}>
+            <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            {refreshing ? 'Refreshing...' : 'Refresh'}
           </Button>
         </div>
       </div>
 
-      {/* Configuration Card */}
-      {config && (
+      {/* 4 Stat Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Card 1: Current Occupancy */}
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Settings className="w-5 h-5" />
-              Configuration
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Current Occupancy</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className={`text-4xl font-bold ${totalOccupancy > 0 ? 'text-green-600' : 'text-gray-400'}`}>
+              {totalOccupancy}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">persons currently inside</p>
+          </CardContent>
+        </Card>
+
+        {/* Card 2: Today's Entries */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1">
+              <LogIn className="w-4 h-4 text-green-600" /> Today's Entries
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm text-muted-foreground">Max Allowed Persons</p>
-                <p className="text-2xl font-bold">{config.MAX_ALLOWED_PERSONS}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Alert Cooldown</p>
-                <p className="text-2xl font-bold">{config.COOLDOWN_PERIOD_SECONDS}s</p>
-              </div>
-            </div>
+            <div className="text-4xl font-bold text-green-600">{todayEntry}</div>
+            <p className="text-xs text-muted-foreground mt-1">beam crossings IN today</p>
           </CardContent>
         </Card>
-      )}
 
-      {/* Statistics Cards */}
-      {statistics && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Active Alerts</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-red-600">
-                {statistics.alerts.unresolved}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {statistics.alerts.total} total alerts
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Peak Occupancy</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{statistics.occupancy.peak}</div>
-              <p className="text-xs text-muted-foreground mt-1">persons</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Entry Events</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-green-600">
-                {statistics.events.entries}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">total entries</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Exit Events</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-blue-600">
-                {statistics.events.exits}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">total exits</p>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Active Alerts */}
-      {activeAlerts.length > 0 && (
+        {/* Card 3: Today's Exits */}
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-red-600" />
-              Active Alerts ({activeAlerts.length})
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1">
+              <LogOut className="w-4 h-4 text-blue-600" /> Today's Exits
             </CardTitle>
-            <CardDescription>Unresolved occupancy violations</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {activeAlerts.map((alert) => (
-                <Alert key={alert._id} variant={alert.alertSeverity === 'CRITICAL' ? 'destructive' : 'default'}>
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Badge variant={getSeverityColor(alert.alertSeverity)}>
-                          {alert.alertSeverity}
-                        </Badge>
-                        <span className="text-sm text-muted-foreground">
-                          {new Date(alert.timestamp).toLocaleString()}
-                        </span>
-                      </div>
-                      <AlertDescription className="font-medium">
-                        {alert.alertMessage}
-                      </AlertDescription>
-                      <div className="mt-2 text-sm text-muted-foreground">
-                        Device: {alert.deviceId} | Location: {alert.location} | Count: {alert.personCount}
-                      </div>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleResolveAlert(alert._id)}
-                    >
-                      <CheckCircle2 className="w-4 h-4 mr-1" />
-                      Resolve
-                    </Button>
-                  </div>
-                </Alert>
-              ))}
-            </div>
+            <div className="text-4xl font-bold text-blue-600">{todayExit}</div>
+            <p className="text-xs text-muted-foreground mt-1">beam crossings OUT today</p>
           </CardContent>
         </Card>
-      )}
 
-      {/* Current Device States */}
+        {/* Card 4: Last Event */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1">
+              <Clock className="w-4 h-4" /> Last Event
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {lastEvent ? (
+              <>
+                <div className="flex items-center gap-2 mb-1">
+                  {getEventBadge(lastEvent.eventType)}
+                  <span className="font-bold text-lg">{lastEvent.personCount}</span>
+                  <span className="text-xs text-muted-foreground">persons</span>
+                </div>
+                <p className="text-xs text-muted-foreground truncate">{lastEvent.location || '—'}</p>
+                <p className="text-xs text-muted-foreground">{new Date(lastEvent.timestamp).toLocaleTimeString()}</p>
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">No events yet</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Event Table */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Users className="w-5 h-5" />
-            Current Occupancy Status
+            <AlertTriangle className="w-5 h-5 text-red-600" />
+            All Events ({logs.length})
           </CardTitle>
-          <CardDescription>Real-time occupancy for all devices</CardDescription>
         </CardHeader>
-        <CardContent>
-          {currentStates.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">No devices reporting</p>
+        <CardContent className="p-0">
+          {logs.length === 0 ? (
+            <div className="text-center py-16 text-muted-foreground">
+              <Shield className="w-12 h-12 mx-auto mb-4 opacity-40" />
+              <p className="text-lg font-medium">No events recorded yet</p>
+              <p className="text-sm mt-1">Events will appear here as IR sensors detect movement.</p>
+            </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {currentStates.map((state) => (
-                <div key={state.deviceId} className="border rounded-lg p-4">
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <h3 className="font-semibold">{state.deviceId}</h3>
-                      <p className="text-sm text-muted-foreground">{state.location}</p>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => handleResetDevice(state.deviceId)}
-                    >
-                      Reset
-                    </Button>
-                  </div>
-                  <div className="flex items-baseline gap-2">
-                    <Users
-                      className={`w-8 h-8 ${getOccupancyColor(
-                        state.personCount,
-                        config?.MAX_ALLOWED_PERSONS || 1
-                      )}`}
-                    />
-                    <span
-                      className={`text-4xl font-bold ${getOccupancyColor(
-                        state.personCount,
-                        config?.MAX_ALLOWED_PERSONS || 1
-                      )}`}
-                    >
-                      {state.personCount}
-                    </span>
-                    <span className="text-muted-foreground">
-                      / {config?.MAX_ALLOWED_PERSONS || 1}
-                    </span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Last update: {new Date(state.lastUpdate).toLocaleTimeString()}
-                  </p>
-                </div>
-              ))}
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/50 text-left">
+                    <th className="px-4 py-3 font-semibold">Time</th>
+                    <th className="px-4 py-3 font-semibold">Event</th>
+                    <th className="px-4 py-3 font-semibold">Device</th>
+                    <th className="px-4 py-3 font-semibold">Location</th>
+                    <th className="px-4 py-3 font-semibold text-center">Count</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {logs.map((log) => (
+                    <tr key={log._id} className="border-b hover:bg-muted/30 transition-colors">
+                      <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
+                        {new Date(log.timestamp).toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3">{getEventBadge(log.eventType)}</td>
+                      <td className="px-4 py-3 font-mono text-xs">{log.deviceId || '—'}</td>
+                      <td className="px-4 py-3">{log.location || '—'}</td>
+                      <td className="px-4 py-3 text-center font-bold text-lg">{log.personCount ?? '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </CardContent>

@@ -7,15 +7,45 @@ const router = express.Router();
 
 /**
  * @route GET /api/attendance
- * @desc Get recent attendance logs (populated with user info)
+ * @desc Get today's daily attendance sessions (summary per person)
+ */
+/**
+ * @route GET /api/attendance
+ * @desc Get attendance sessions (defaults to today, supports historical via query)
  */
 router.get('/', async (req, res) => {
     try {
         const DailyAttendance = (await import('../../models/DailyAttendance.js')).default;
+        const { date, limit = 100 } = req.query;
 
-        const logs = await DailyAttendance.find()
+        let query = {};
+        if (date) {
+            query.date = date;
+        } else if (req.query.today === 'true' || !req.query.all) {
+            // Default to today unless 'all' is specified
+            query.date = new Date().toISOString().split('T')[0];
+        }
+
+        const logs = await DailyAttendance.find(query)
             .sort({ date: -1, clockIn: -1 })
-            .limit(100)
+            .limit(parseInt(limit))
+            .populate('user', 'username email fingerprintId');
+
+        res.json({ success: true, data: logs });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+/**
+ * @route GET /api/attendance/raw
+ * @desc Get recent raw biometric scans (activity feed)
+ */
+router.get('/raw', async (req, res) => {
+    try {
+        const logs = await Attendance.find()
+            .sort({ timestamp: -1 })
+            .limit(50)
             .populate('user', 'username email fingerprintId');
 
         res.json({ success: true, data: logs });
@@ -61,6 +91,11 @@ router.get('/anomaly-stats', anomalyController.getStats);
 // PATCH /api/attendance/anomalies/:id/review
 // Mark anomaly as reviewed
 router.patch('/anomalies/:id/review', anomalyController.reviewAnomaly);
+
+// GET /api/attendance/unread-count
+// Get count of unread notifications (new anomalies)
+router.get('/unread-count', anomalyController.getUnreadCount);
+
 
 /**
  * @route GET /api/attendance/user/:userId/stats

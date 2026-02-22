@@ -1,0 +1,84 @@
+[
+  {
+    "_id": "699a0c6a18a6a6a52e701245",
+    "username": "ssathsara",
+    "email": "sadeeshasathsara99@gmail.com",
+    "parentWhatsapp": "232",
+    "class": "as",
+    "role": "student",
+    "fingerprintTemplate": "7wHv7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+8=",
+    "templateMetadata": {
+      "quality": 95,
+      "templateSize": 512,
+      "enrollmentDevice": "D4:E9:F4:BC:C7:B4",
+      "templateFormat": "R308",
+      "createdAt": "2026-02-21T19:51:31.527Z"
+    },
+    "isEnrolled": true,
+    "syncedDevices": [
+      {
+        "deviceMAC": "D4:E9:F4:BC:C7:B4",
+        "scannerID": "SCANNER-IN",
+        "localFingerprintId": 1,
+        "clusterID": "ENTRANCE_A",
+        "syncedAt": "2026-02-21T20:33:24.157Z",
+        "syncStatus": "synced",
+        "_id": "699a0cc318a6a6a52e701620"
+      },
+      {
+        "deviceMAC": "68:FE:71:F8:31:A0",
+        "scannerID": "SCANNER-OUT",
+        "localFingerprintId": 1,
+        "clusterID": "ENTRANCE_A",
+        "syncedAt": "2026-02-21T20:33:24.847Z",
+        "syncStatus": "synced",
+        "_id": "699a0cc418a6a6a52e70162f"
+      }
+    ],
+    "enrollments": [],
+    "createdAt": "2026-02-21T19:50:02.333Z",
+    "__v": 1,
+    "globalFingerprintId": 1
+  },
+  {
+    "_id": "699a10ce18a6a6a52e7049b0",
+    "username": "thisum",
+    "email": "thisum@gmail.com",
+    "parentWhatsapp": "3434",
+    "class": "sd",
+    "role": "student",
+    "fingerprintTemplate": "AwNaKhQBNAF5AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADgABAH8AAwADAwDP//P////+/7vuqqqqqqqVlVVVVVFRVRVREEABAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQFHjmP+MJZgvnWY4F5koWAeQyMhHjskn35aJUc+M6sfPkiwh95WsMY+fTAkvi203h5TNJ7+ZTSr3ka3Xv52OVUeOL2F/kM/HX5ImuJfWKmG/4G50r9nC2C8bA+JfDw2h3o2Nx7aZjosumM8APpeDAo4faaimGcs3Rgsup24Xw5KuXomjbkpOwaZVxLK9GipoZVoKmjVbxXgEF0ZybFjkQkOV5Uib2nHWJ4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwNSKQABIAF2AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADQABAHsAAwAMDADP///////7/u6qqqqqqpmVVRVVVFUVFVEQQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAjWReKRUhHm4YoL5coOB+OqIhfjKjX95RpIeeKqnfnj+viD5NsAaedDAlHiQzXn5Js99eW7QsPj02X15sORV+LrxGXjk+Hd5BGeK/UCjHX3e50x9giuEcZQ9J3DK1R9ostd86XDmAGlk7gVpXi4qYdSai+F4sXXgiuR4YWA3LGXGmjhkfOYb5UBILVGApYfVfKek1Z5WgcFWZShFckIluUBRizwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "templateMetadata": {
+      "quality": 95,
+      "templateSize": 768,
+      "enrollmentDevice": "D4:E9:F4:BC:C7:B4",
+      "templateFormat": "R308",
+      "createdAt": "2026-02-21T20:09:06.047Z"
+    },
+    "isEnrolled": true,
+    "syncedDevices": [
+      {
+        "deviceMAC": "D4:E9:F4:BC:C7:B4",
+        "scannerID": "SCANNER-IN",
+        "localFingerprintId": 2,
+        "clusterID": "ENTRANCE_A",
+        "syncedAt": "2026-02-21T20:33:27.919Z",
+        "syncStatus": "failed",
+        "_id": "699a10e218a6a6a52e704aac"
+      },
+      {
+        "deviceMAC": "68:FE:71:F8:31:A0",
+        "scannerID": "SCANNER-OUT",
+        "localFingerprintId": 2,
+        "clusterID": "ENTRANCE_A",
+        "syncedAt": "2026-02-21T20:33:26.664Z",
+        "syncStatus": "synced",
+        "_id": "699a10e218a6a6a52e704abc"
+      }
+    ],
+    "enrollments": [],
+    "createdAt": "2026-02-21T20:08:46.839Z",
+    "__v": 1,
+    "globalFingerprintId": 2
+  }
+]

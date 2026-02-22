@@ -50,205 +50,188 @@ class WhatsAppService {
     }
 
     /**
-     * Format phone number for WhatsApp (ensure it has whatsapp: prefix)
+     * Format phone number(s) for WhatsApp (ensure it has whatsapp: prefix)
+     * Handles single strings, comma-separated strings, or arrays
      */
-    formatWhatsAppNumber(phoneNumber) {
-        if (!phoneNumber) return null;
+    formatWhatsAppNumbers(numbers) {
+        if (!numbers) return [];
 
-        // Remove spaces and dashes
-        let cleaned = phoneNumber.replace(/[\s-]/g, '');
-
-        // Add + if not present
-        if (!cleaned.startsWith('+')) {
-            cleaned = '+' + cleaned;
+        let numberArray = [];
+        if (Array.isArray(numbers)) {
+            numberArray = numbers;
+        } else if (typeof numbers === 'string') {
+            numberArray = numbers.split(',').map(n => n.trim());
+        } else {
+            return [];
         }
 
-        // Add whatsapp: prefix if not present
-        if (!cleaned.startsWith('whatsapp:')) {
-            cleaned = 'whatsapp:' + cleaned;
-        }
-
-        return cleaned;
+        return numberArray
+            .map(num => {
+                let cleaned = num.replace(/[\s-]/g, '');
+                if (!cleaned) return null;
+                if (!cleaned.startsWith('+') && !cleaned.startsWith('whatsapp:')) {
+                    cleaned = '+' + cleaned;
+                }
+                if (!cleaned.startsWith('whatsapp:')) {
+                    cleaned = 'whatsapp:' + cleaned;
+                }
+                return cleaned;
+            })
+            .filter(num => num !== null);
     }
 
     /**
-     * Send check-in notification to parent
+     * Internal method to send message to multiple recipients
+     * @private
      */
-    async sendCheckInNotification(studentName, parentWhatsapp, checkInTime) {
+    async _sendToMultiple(recipients, body) {
         if (!this.isEnabled) {
-            console.log('📱 WhatsApp disabled - Would have sent check-in notification');
-            return { success: false, reason: 'WhatsApp service not enabled' };
+            console.log('📱 WhatsApp disabled - Would have sent:', body);
+            return { success: false, reason: 'Service disabled' };
         }
 
-        try {
-            const formattedNumber = this.formatWhatsAppNumber(parentWhatsapp);
-            if (!formattedNumber) {
-                return { success: false, reason: 'Invalid phone number' };
-            }
-
-            const time = new Date(checkInTime).toLocaleTimeString('en-US', {
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: true
-            });
-
-            const message = `🎓 *Attendance Notification*\n\n` +
-                `Your child *${studentName}* has checked in at the school.\n\n` +
-                `⏰ Time: ${time}\n` +
-                `📅 Date: ${new Date(checkInTime).toLocaleDateString()}\n\n` +
-                `_IoT Biometric Attendance System_`;
-
-            const result = await this.client.messages.create({
-                body: message,
-                from: this.fromNumber,
-                to: formattedNumber
-            });
-
-            console.log(`✅ WhatsApp sent to ${parentWhatsapp}: Check-in notification for ${studentName}`);
-            return { success: true, messageId: result.sid };
-
-        } catch (error) {
-            console.error('❌ WhatsApp send error:', error.message);
-            return { success: false, reason: error.message };
+        const formattedNumbers = this.formatWhatsAppNumbers(recipients);
+        if (formattedNumbers.length === 0) {
+            return { success: false, reason: 'No valid phone numbers' };
         }
+
+        const results = await Promise.allSettled(
+            formattedNumbers.map(to =>
+                this.client.messages.create({
+                    body: body,
+                    from: this.fromNumber,
+                    to: to
+                })
+            )
+        );
+
+        const successes = results.filter(r => r.status === 'fulfilled');
+        const failures = results.filter(r => r.status === 'rejected');
+
+        if (successes.length > 0) {
+            console.log(`✅ WhatsApp sent to ${successes.length} numbers`);
+        }
+        if (failures.length > 0) {
+            console.error(`❌ WhatsApp failed for ${failures.length} numbers:`, failures[0].reason?.message);
+        }
+
+        return {
+            success: successes.length > 0,
+            sentCount: successes.length,
+            failedCount: failures.length,
+            messageIds: successes.map(s => s.value.sid)
+        };
     }
 
     /**
-     * Send anomaly notification to parent
+     * Send check-in notification to multiple recipients
      */
-    async sendAnomalyNotification(studentName, parentWhatsapp, anomalyDetails) {
-        if (!this.isEnabled) {
-            console.log('📱 WhatsApp disabled - Would have sent anomaly notification');
-            return { success: false, reason: 'WhatsApp service not enabled' };
-        }
+    async sendCheckInNotification(studentName, recipients, checkInTime) {
+        const time = new Date(checkInTime).toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+        });
 
-        try {
-            const formattedNumber = this.formatWhatsAppNumber(parentWhatsapp);
-            if (!formattedNumber) {
-                return { success: false, reason: 'Invalid phone number' };
-            }
+        const message = `🎓 *Attendance Notification*\n\n` +
+            `Your child *${studentName}* has checked in at the school.\n\n` +
+            `⏰ Time: ${time}\n` +
+            `📅 Date: ${new Date(checkInTime).toLocaleDateString()}\n\n` +
+            `_IoT Biometric Attendance System_`;
 
-            const { type, severity, timestamp, details } = anomalyDetails;
-
-            const time = new Date(timestamp).toLocaleTimeString('en-US', {
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: true
-            });
-
-            let emoji = '⚠️';
-            if (severity === 'high' || severity === 'critical') {
-                emoji = '🚨';
-            } else if (severity === 'medium') {
-                emoji = '⚠️';
-            } else {
-                emoji = 'ℹ️';
-            }
-
-            let message = `${emoji} *Attendance Alert*\n\n` +
-                `Unusual attendance pattern detected for *${studentName}*\n\n` +
-                `⏰ Time: ${time}\n` +
-                `📅 Date: ${new Date(timestamp).toLocaleDateString()}\n` +
-                `🔍 Type: ${type || 'Anomaly detected'}\n` +
-                `📊 Severity: ${severity?.toUpperCase() || 'UNKNOWN'}\n`;
-
-            if (details) {
-                message += `\nℹ️ Details: ${details}\n`;
-            }
-
-            message += `\n_Please contact the school if you have any concerns._\n` +
-                `_IoT Biometric Attendance System_`;
-
-            const result = await this.client.messages.create({
-                body: message,
-                from: this.fromNumber,
-                to: formattedNumber
-            });
-
-            console.log(`✅ WhatsApp sent to ${parentWhatsapp}: Anomaly notification for ${studentName}`);
-            return { success: true, messageId: result.sid };
-
-        } catch (error) {
-            console.error('❌ WhatsApp send error:', error.message);
-            return { success: false, reason: error.message };
-        }
+        return this._sendToMultiple(recipients, message);
     }
+
 
     /**
-     * Send late arrival notification to parent
+     * Send check-out notification to multiple recipients
      */
-    async sendLateArrivalNotification(studentName, parentWhatsapp, checkInTime, minutesLate) {
-        if (!this.isEnabled) {
-            console.log('📱 WhatsApp disabled - Would have sent late arrival notification');
-            return { success: false, reason: 'WhatsApp service not enabled' };
-        }
+    async sendCheckOutNotification(studentName, recipients, checkOutTime) {
+        const time = new Date(checkOutTime).toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+        });
 
-        try {
-            const formattedNumber = this.formatWhatsAppNumber(parentWhatsapp);
-            if (!formattedNumber) {
-                return { success: false, reason: 'Invalid phone number' };
-            }
+        const message = `🎓 *Attendance Notification*\n\n` +
+            `Your child *${studentName}* has checked out from the school.\n\n` +
+            `⏰ Time: ${time}\n` +
+            `📅 Date: ${new Date(checkOutTime).toLocaleDateString()}\n\n` +
+            `_IoT Biometric Attendance System_`;
 
-            const time = new Date(checkInTime).toLocaleTimeString('en-US', {
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: true
-            });
-
-            const message = `⏰ *Late Arrival Notice*\n\n` +
-                `Your child *${studentName}* arrived late to school.\n\n` +
-                `🕐 Arrival Time: ${time}\n` +
-                `⏱️ Late by: ${minutesLate} minutes\n` +
-                `📅 Date: ${new Date(checkInTime).toLocaleDateString()}\n\n` +
-                `_Please ensure timely arrival._\n` +
-                `_IoT Biometric Attendance System_`;
-
-            const result = await this.client.messages.create({
-                body: message,
-                from: this.fromNumber,
-                to: formattedNumber
-            });
-
-            console.log(`✅ WhatsApp sent to ${parentWhatsapp}: Late arrival notification for ${studentName}`);
-            return { success: true, messageId: result.sid };
-
-        } catch (error) {
-            console.error('❌ WhatsApp send error:', error.message);
-            return { success: false, reason: error.message };
-        }
+        return this._sendToMultiple(recipients, message);
     }
+
 
     /**
-     * Send custom WhatsApp message
+     * Send anomaly notification to multiple recipients
      */
-    async sendCustomMessage(studentName, parentWhatsapp, customMessage) {
-        if (!this.isEnabled) {
-            console.log('📱 WhatsApp disabled - Would have sent custom message');
-            return { success: false, reason: 'WhatsApp service not enabled' };
+    async sendAnomalyNotification(studentName, recipients, anomalyDetails) {
+        const { type, severity, timestamp, details } = anomalyDetails;
+
+        const time = new Date(timestamp).toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+        });
+
+        let emoji = '⚠️';
+        if (severity === 'high' || severity === 'critical') {
+            emoji = '🚨';
+        } else if (severity === 'medium') {
+            emoji = '⚠️';
+        } else {
+            emoji = 'ℹ️';
         }
 
-        try {
-            const formattedNumber = this.formatWhatsAppNumber(parentWhatsapp);
-            if (!formattedNumber) {
-                return { success: false, reason: 'Invalid phone number' };
-            }
+        let message = `${emoji} *Attendance Alert*\n\n` +
+            `Unusual attendance pattern detected for *${studentName}*\n\n` +
+            `⏰ Time: ${time}\n` +
+            `📅 Date: ${new Date(timestamp).toLocaleDateString()}\n` +
+            `🔍 Type: ${type || 'Anomaly detected'}\n` +
+            `📊 Severity: ${severity?.toUpperCase() || 'UNKNOWN'}\n`;
 
-            const message = `${customMessage}\n\n_IoT Biometric Attendance System_`;
-
-            const result = await this.client.messages.create({
-                body: message,
-                from: this.fromNumber,
-                to: formattedNumber
-            });
-
-            console.log(`✅ WhatsApp sent to ${parentWhatsapp}: Custom message for ${studentName}`);
-            return { success: true, messageId: result.sid };
-
-        } catch (error) {
-            console.error('❌ WhatsApp send error:', error.message);
-            return { success: false, reason: error.message };
+        if (details) {
+            message += `\nℹ️ Details: ${details}\n`;
         }
+
+        message += `\n_Please contact the school if you have any concerns._\n` +
+            `_IoT Biometric Attendance System_`;
+
+        return this._sendToMultiple(recipients, message);
     }
+
+
+    /**
+     * Send late arrival notification to multiple recipients
+     */
+    async sendLateArrivalNotification(studentName, recipients, checkInTime, minutesLate) {
+        const time = new Date(checkInTime).toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+        });
+
+        const message = `⏰ *Late Arrival Notice*\n\n` +
+            `Your child *${studentName}* arrived late to school.\n\n` +
+            `🕐 Arrival Time: ${time}\n` +
+            `⏱️ Late by: ${minutesLate} minutes\n` +
+            `📅 Date: ${new Date(checkInTime).toLocaleDateString()}\n\n` +
+            `_Please ensure timely arrival._\n` +
+            `_IoT Biometric Attendance System_`;
+
+        return this._sendToMultiple(recipients, message);
+    }
+
+
+    /**
+     * Send custom WhatsApp message to multiple recipients
+     */
+    async sendCustomMessage(studentName, recipients, customMessage) {
+        const message = `${customMessage}\n\n_IoT Biometric Attendance System_`;
+        return this._sendToMultiple(recipients, message);
+    }
+
 
     /**
      * Test WhatsApp connection

@@ -1,11 +1,11 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, FileText, LogOut, Bell, Search, Wifi, ChevronDown, ChevronRight, UserCheck, Upload, GraduationCap, BarChart3, TrendingUp, Users2, AlertTriangle, Eye } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, LogOut, Bell, Search, Wifi, ChevronDown, ChevronRight, UserCheck, Upload, GraduationCap, BarChart3, TrendingUp, Users2, AlertTriangle, Eye, Server, Fingerprint } from 'lucide-react';
 import { ModeToggle } from '@/components/mode-toggle';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import toast from 'react-hot-toast';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import apiService from '@/utils/apiService';
 
 const Sidebar = () => {
@@ -19,7 +19,9 @@ const Sidebar = () => {
         { href: "/forecasting", label: "Time Series Forecasting", icon: TrendingUp },
         { href: "/clusters", label: "Attendance Clustering", icon: Users2 },
         { href: "/anomalies", label: "Anomaly Detection", icon: AlertTriangle },
-        { href: "/occupancy", label: "Occupancy Monitor", icon: Eye }
+        { href: "/occupancy", label: "Occupancy Monitor", icon: Eye },
+        { href: "/devices", label: "Device Management", icon: Server },
+        { href: "/template-sync", label: "Template Sync", icon: Fingerprint }
     ];
 
     const studentsSubMenu = [
@@ -147,11 +149,26 @@ const Sidebar = () => {
 const TopBar = () => {
     const navigate = useNavigate();
 
-    const handleNotifications = () => {
-        navigate('/notifications');
-    };
+    const [unreadCount, setUnreadCount] = useState(0);
 
-    const handleWhatsAppAlerts = () => {
+    useEffect(() => {
+        const fetchUnreadCount = async () => {
+            try {
+                const response = await apiService.get('/api/attendance/unread-count');
+                if (response.success) {
+                    setUnreadCount(response.count);
+                }
+            } catch (error) {
+                console.error('Error fetching unread count:', error);
+            }
+        };
+
+        fetchUnreadCount();
+        const interval = setInterval(fetchUnreadCount, 30000); // Poll every 30s
+        return () => clearInterval(interval);
+    }, []);
+
+    const handleNotifications = () => {
         navigate('/notifications');
     };
 
@@ -183,7 +200,11 @@ const TopBar = () => {
                     onClick={handleNotifications}
                 >
                     <Bell className="h-5 w-5" />
-                    <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full text-[10px] text-white flex items-center justify-center">3</span>
+                    {unreadCount > 0 && (
+                        <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full text-[10px] text-white flex items-center justify-center animate-pulse">
+                            {unreadCount > 99 ? '99+' : unreadCount}
+                        </span>
+                    )}
                 </Button>
 
                 {/* WhatsApp Alerts */}
@@ -191,7 +212,7 @@ const TopBar = () => {
                     variant="outline"
                     size="sm"
                     className="bg-green-500 hover:bg-green-600 text-white border-green-500 hover:border-green-600"
-                    onClick={handleWhatsAppAlerts}
+                    onClick={handleNotifications}
                 >
                     WhatsApp Alerts
                 </Button>

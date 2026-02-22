@@ -39,6 +39,18 @@ class MQTTBridgeService {
                 reconnectPeriod: 5000
             });
 
+            // Listen for alarms from tailgating detection service
+            tailgatingDetection.on('alarm', (data) => {
+                console.log(`[MQTT Bridge] 🚨 Security alarm from Tailgating service: ${data.type} (Cluster: ${data.clusterId})`);
+                this.handleClusterAlarm(data.clusterId, data.type);
+            });
+
+            // Subscribe to RabbitMQ commands and relay them to MQTT devices
+            rabbitMQService.subscribeCommands(async (command) => {
+                console.log(`[MQTT Bridge] 🔄 Relaying command from RabbitMQ: ${command.action}`);
+                await this.publishCommand(command);
+            });
+
             this.client.on('connect', () => {
                 console.log('✓ Connected to MQTT Broker');
 
@@ -249,13 +261,7 @@ class MQTTBridgeService {
             const { deviceMAC, direction, timestamp } = event;
             const device = await Device.findOne({ deviceMAC });
 
-            let clusterName = 'Unknown Cluster';
-            if (device && device.clusterID) {
-                const cluster = await Cluster.findOne({ clusterID: device.clusterID });
-                if (cluster) clusterName = cluster.clusterName;
-            }
-
-            const clusterID = clusterName;
+            const clusterID = device?.clusterID || event.clusterID || 'Unknown Cluster';
             const location = device?.location || 'Unknown Location';
             const deviceRole = device?.role || 'UNKNOWN';
 
@@ -465,6 +471,26 @@ class MQTTBridgeService {
         } catch (error) {
             console.error('[MQTT Bridge] Error publishing command:', error);
             throw error;
+        }
+    }
+
+    /**
+     * Handle cluster-wide alarms by triggering the master buzzer (EXIT node)
+     * @param {String} clusterID 
+     * @param {String} alarmType 
+     */
+    async handleClusterAlarm(clusterID, alarmType) {
+        try {
+            console.log(`[MQTT Bridge] 📢 Broadcasting ${alarmType} alarm to cluster ${clusterID} for synchronized feedback`);
+            this.publishCommand({
+                action: 'TRIGGER_ALARM_PATTERN',
+                targetDeviceMAC: 'ALL', // Broadcast to all devices in cluster
+                clusterID,
+                pattern: alarmType,
+                timestamp: Date.now()
+            });
+        } catch (error) {
+            console.error('[MQTT Bridge] Error handling cluster alarm:', error);
         }
     }
 

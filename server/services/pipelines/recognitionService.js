@@ -100,6 +100,11 @@ class RecognitionService {
             if (!user) {
                 console.warn(`[Recognition] Unknown fingerprint ${fingerprintId} on ${scannerID} (${deviceMAC})`);
                 console.log(`[Recognition] Lookup attempted: Global sync, Direct global ID, Legacy enrollments, Legacy single ID`);
+
+                // 🔊 Trigger UNKNOWN sound on master buzzer
+                if (clusterID) {
+                    this.triggerClusterSound(clusterID, 'FINGERPRINT_UNKNOWN');
+                }
                 return;
             }
 
@@ -107,20 +112,35 @@ class RecognitionService {
             const hasAccess = await this.checkUserAccess(user, clusterID, scannerID, deviceMAC, fingerprintId);
             if (!hasAccess) {
                 console.warn(`[Recognition] Access denied for ${user.username} on ${scannerID}`);
+
+                // 🔊 Trigger UNKNOWN sound on master buzzer (Access Denied)
+                if (clusterID) {
+                    this.triggerClusterSound(clusterID, 'FINGERPRINT_UNKNOWN');
+                }
                 return;
             }
 
             console.log(`[Recognition] ✓ Identified: ${user.username} - Direction: ${direction}`);
 
+            // 🔊 Trigger AUTHORIZED sound on master buzzer
+            if (clusterID) {
+                this.triggerClusterSound(clusterID, 'FINGERPRINT_AUTHORIZED');
+
+                // 🔓 Unlock the door for this cluster
+                this.unlockClusterDoor(clusterID);
+            }
+
             // 🔐 Start Tailgating Detection Session
-            // This creates a 10-second window to monitor camera and IR sensor for unauthorized entries
+            // Use clusterID and direction to enable Zero-False-Alarm flow tracking
             const scanTimestamp = Date.now();
-            const sessionId = tailgatingDetection.addFingerprintScan(
+            tailgatingDetection.addFingerprintScan(
                 deviceMAC,
                 user._id.toString(),
-                scanTimestamp
+                scanTimestamp,
+                clusterID,
+                direction
             );
-            console.log(`[Tailgating] Session: ${sessionId} | User: ${user.username}`);
+            console.log(`[Tailgating] Added scan to cluster session: ${clusterID || deviceMAC} | User: ${user.username}`);
 
             // Load system settings
             const SystemSettings = (await import('../../models/SystemSettings.js')).default;
@@ -135,14 +155,26 @@ class RecognitionService {
                 if (s.key === 'SHIFT_START_TIME') settings.shiftStart = s.value;
                 if (s.key === 'CLASS_END_TIME') settings.classEnd = s.value;
                 if (s.key === 'LATE_THRESHOLD') settings.lateThreshold = s.value;
+                if (s.key === 'WHATSAPP_ADMIN_NUMBERS') settings.adminNumbers = s.value;
             });
 
+            // Aggregate all recipients (parent numbers + admin numbers)
+            const recipients = [];
+            if (user.parentWhatsapp) recipients.push(...user.parentWhatsapp.split(',').map(n => n.trim()));
+            if (settings.adminNumbers) recipients.push(...settings.adminNumbers.split(',').map(n => n.trim()));
+
+            // Remove duplicates and empty strings
+            const uniqueRecipients = [...new Set(recipients.filter(n => n))];
+
+
             // Save raw attendance log
+            const attendanceType = (direction === 'IN' || direction === 'ENTRY') ? 'CHECK_IN' : 'CHECK_OUT';
+
             const rawLog = new Attendance({
                 user: user._id,
                 fingerprintId: fingerprintId,
                 deviceId: deviceMAC || scannerID || 'UNKNOWN',
-                type: direction === 'IN' ? 'CHECK_IN' : 'CHECK_OUT',
+                type: attendanceType,
                 timestamp: new Date()
             });
             await rawLog.save();
@@ -228,6 +260,7 @@ class RecognitionService {
                 this.io.emit('attendance-update', {
                     userId: user._id,
                     username: user.username,
+                    fingerprintId: fingerprintId,
                     direction: direction,
                     clusterID: clusterID,
                     scannerID: scannerID,
@@ -236,30 +269,42 @@ class RecognitionService {
                 });
             }
 
-            // Send WhatsApp notification (only on first check-in)
-            if (user.parentWhatsapp && session.clockIn.getTime() === now.getTime()) {
-                console.log(`[WhatsApp] Sending notification for ${user.username}`);
-
-                whatsappService.sendCheckInNotification(
-                    user.username,
-                    user.parentWhatsapp,
-                    session.clockIn
-                ).catch(err => console.error('WhatsApp error:', err));
-
-                if (session.status === 'LATE') {
-                    const [startHour, startMin] = settings.shiftStart.split(':').map(Number);
-                    const shiftStartTime = new Date(now);
-                    shiftStartTime.setHours(startHour, startMin, 0, 0);
-                    const minutesLate = Math.floor((now - shiftStartTime) / 60000);
-
-                    whatsappService.sendLateArrivalNotification(
+            // Send WhatsApp notification
+            if (uniqueRecipients.length > 0) {
+                // First scan of the day (Check-In)
+                if (session.clockIn.getTime() === now.getTime()) {
+                    console.log(`[WhatsApp] Sending check-in notification for ${user.username} to ${uniqueRecipients.length} recipients`);
+                    whatsappService.sendCheckInNotification(
                         user.username,
-                        user.parentWhatsapp,
-                        session.clockIn,
-                        minutesLate
-                    ).catch(err => console.error('WhatsApp late notification error:', err));
+                        uniqueRecipients,
+                        session.clockIn
+                    ).catch(err => console.error('WhatsApp error:', err));
+
+                    if (session.status === 'LATE') {
+                        const [startHour, startMin] = settings.shiftStart.split(':').map(Number);
+                        const shiftStartTime = new Date(now);
+                        shiftStartTime.setHours(startHour, startMin, 0, 0);
+                        const minutesLate = Math.floor((now - shiftStartTime) / 60000);
+
+                        whatsappService.sendLateArrivalNotification(
+                            user.username,
+                            uniqueRecipients,
+                            session.clockIn,
+                            minutesLate
+                        ).catch(err => console.error('WhatsApp late notification error:', err));
+                    }
+                }
+                // Subsequent scan and it's physically a Check-Out
+                else if (attendanceType === 'CHECK_OUT') {
+                    console.log(`[WhatsApp] Sending check-out notification for ${user.username} to ${uniqueRecipients.length} recipients`);
+                    whatsappService.sendCheckOutNotification(
+                        user.username,
+                        uniqueRecipients,
+                        now
+                    ).catch(err => console.error('WhatsApp check-out notification error:', err));
                 }
             }
+
 
         } catch (error) {
             console.error('[Recognition] Error:', error);
@@ -454,6 +499,61 @@ class RecognitionService {
 
         } catch (error) {
             console.error('[SecurityAlert] Error:', error);
+        }
+    }
+
+    /**
+     * Trigger a sound pattern on the cluster's master buzzer (EXIT node)
+     * @param {String} clusterID 
+     * @param {String} pattern 
+     */
+    async triggerClusterSound(clusterID, pattern) {
+        try {
+            console.log(`[Recognition] 🔊 Broadcasting ${pattern} to cluster ${clusterID} for synchronized feedback`);
+
+            const command = {
+                action: 'TRIGGER_ALARM_PATTERN',
+                targetDeviceMAC: 'ALL', // Broadcast for synchronized lights/sound
+                clusterID: clusterID,
+                pattern: pattern,
+                timestamp: Date.now()
+            };
+
+            await rabbitMQService.publishCommand(command);
+
+        } catch (error) {
+            console.error('[Recognition] Error triggering cluster sound:', error);
+        }
+    }
+
+    /**
+     * Unlock the door for a specific cluster
+     * @param {String} clusterID 
+     */
+    async unlockClusterDoor(clusterID) {
+        try {
+            // Import Cluster model dynamically if needed, or use the one at the top
+            const cluster = await Cluster.findOne({ clusterID });
+            if (!cluster || !cluster.doorControlDevice) {
+                console.warn(`[Recognition] 🔓 Cannot unlock: No door control device for cluster ${clusterID}`);
+                return;
+            }
+
+            console.log(`[Recognition] 🔓 Unlocking door for cluster ${clusterID} (Device: ${cluster.doorControlDevice})`);
+
+            const command = {
+                action: 'UNLOCK_DOOR',
+                targetDeviceMAC: cluster.doorControlDevice,
+                clusterID: clusterID,
+                duration: cluster.unlockDuration || 5000,
+                reason: 'Fingerprint Authorized',
+                timestamp: Date.now()
+            };
+
+            await rabbitMQService.publishCommand(command);
+
+        } catch (error) {
+            console.error('[Recognition] Error unlocking cluster door:', error);
         }
     }
 }

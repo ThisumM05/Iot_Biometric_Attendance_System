@@ -256,15 +256,16 @@ const BiometricUsers = () => {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="parentWhatsapp">WhatsApp Number (Parent)</Label>
+                                <Label htmlFor="parentWhatsapp">WhatsApp Number(s)</Label>
                                 <Input
                                     id="parentWhatsapp"
                                     type="tel"
-                                    placeholder="+1234567890"
+                                    placeholder="+12345, +67890"
                                     value={newUser.parentWhatsapp}
                                     onChange={e => setNewUser({ ...newUser, parentWhatsapp: e.target.value })}
                                 />
-                                <p className="text-xs text-muted-foreground">Include country code (e.g., +1 for US)</p>
+                                <p className="text-xs text-muted-foreground">Support multiple numbers with commas. Include country code.</p>
+
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="class">Class</Label>
@@ -299,15 +300,15 @@ const BiometricUsers = () => {
                                     <Label htmlFor="edit-email">Email</Label>
                                     <Input id="edit-email" type="email" value={editingUser.email} onChange={e => setEditingUser({ ...editingUser, email: e.target.value })} required />
                                 </div>
-                                <div className="space-y-2">                                    <Label htmlFor="edit-parentWhatsapp">Parent WhatsApp Number</Label>
+                                <div className="space-y-2">                                    <Label htmlFor="edit-parentWhatsapp">Parent WhatsApp Number(s)</Label>
                                     <Input
                                         id="edit-parentWhatsapp"
                                         type="tel"
-                                        placeholder="+1234567890"
+                                        placeholder="+12345, +67890"
                                         value={editingUser?.parentWhatsapp || ''}
                                         onChange={(e) => setEditingUser({ ...editingUser, parentWhatsapp: e.target.value })}
                                     />
-                                    <p className="text-xs text-muted-foreground">Include country code for WhatsApp notifications</p>
+                                    <p className="text-xs text-muted-foreground">Support multiple numbers with commas. Include country code.</p>
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="edit-class">Class</Label>

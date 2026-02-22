@@ -203,6 +203,36 @@ class RabbitMQService {
     }
 
     /**
+     * Subscribe to the commands queue
+     * @param {Function} callback - Function to call when a command is received
+     */
+    async subscribeCommands(callback) {
+        if (!this.channel) {
+            console.log('⏳ RabbitMQ channel not ready for command subscription, waiting 2s...');
+            setTimeout(() => this.subscribeCommands(callback), 2000);
+            return;
+        }
+
+        try {
+            console.log(`[RabbitMQ] ✓ Subscribed to command queue: ${this.queues.COMMANDS}`);
+            this.channel.consume(this.queues.COMMANDS, async (msg) => {
+                if (msg !== null) {
+                    try {
+                        const command = JSON.parse(msg.content.toString());
+                        await callback(command);
+                        this.channel.ack(msg);
+                    } catch (error) {
+                        console.error('[RabbitMQ] Error in command subscriber:', error);
+                        this.channel.ack(msg);
+                    }
+                }
+            });
+        } catch (error) {
+            console.error('[RabbitMQ] Error subscribing to commands:', error);
+        }
+    }
+
+    /**
      * Handle enrollment success event
      * @param {Object} event
      */

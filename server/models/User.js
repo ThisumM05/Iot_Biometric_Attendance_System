@@ -16,10 +16,13 @@ const UserSchema = new mongoose.Schema({
         default: null,
         validate: {
             validator: function (v) {
-                // Allow null or valid phone number format (basic validation)
-                return v === null || v === '' || /^\+?[1-9]\d{1,14}$/.test(v.replace(/[\s-]/g, ''));
+                // Allow null, empty, or comma-separated list of valid phone numbers
+                if (!v || v === '') return true;
+                const numbers = v.split(',');
+                return numbers.every(num => /^\+?[1-9]\d{1,14}$/.test(num.trim().replace(/[\s-]/g, '')));
             },
-            message: props => `${props.value} is not a valid phone number!`
+            message: props => `${props.value} contains an invalid phone number! Support multiple numbers with commas (e.g. +123, +456)`
+
         }
     },
     class: {

@@ -5,15 +5,17 @@ import Attendance from './models/Attendance.js';
 
 dotenv.config();
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/iot_attendance';
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/IOT_Biometrics';
 
 // Sample data configuration
 const SAMPLE_USERS = [
-    { username: 'john.doe', email: 'john@example.com', parentWhatsapp: '+12125551001', class: '11-A', fingerprintId: 1, isEnrolled: true, role: 'student' },
-    { username: 'jane.smith', email: 'jane@example.com', parentWhatsapp: '+12125551002', class: '11-B', fingerprintId: 2, isEnrolled: true, role: 'student' },
-    { username: 'bob.johnson', email: 'bob@example.com', parentWhatsapp: '+12125551003', class: '12-A', fingerprintId: 3, isEnrolled: true, role: 'student' },
-    { username: 'alice.williams', email: 'alice@example.com', parentWhatsapp: '+12125551004', class: '12-B', fingerprintId: 4, isEnrolled: true, role: 'student' },
-    { username: 'charlie.brown', email: 'charlie@example.com', parentWhatsapp: '+12125551005', class: '11-A', fingerprintId: 5, isEnrolled: true, role: 'student' },
+    { username: 'john.doe', email: 'john@example.com', parentWhatsapp: '+94707176178', class: '11-A', fingerprintId: 1, isEnrolled: true, role: 'student' },
+    { username: 'jane.smith', email: 'jane@example.com', parentWhatsapp: '+94707176178', class: '11-B', fingerprintId: 2, isEnrolled: true, role: 'student' },
+    { username: 'bob.johnson', email: 'bob@example.com', parentWhatsapp: '+94707176178', class: '12-A', fingerprintId: 3, isEnrolled: true, role: 'student' },
+    { username: 'alice.williams', email: 'alice@example.com', parentWhatsapp: '+94707176178', class: '12-B', fingerprintId: 4, isEnrolled: true, role: 'student' },
+    { username: 'charlie.brown', email: 'charlie@example.com', parentWhatsapp: '+94707176178', class: '11-A', fingerprintId: 5, isEnrolled: true, role: 'student' },
+    { username: 'diana.prince', email: 'diana@example.com', parentWhatsapp: '+94707176178', class: '10-A', fingerprintId: 6, isEnrolled: true, role: 'student' },
+    { username: 'peter.parker', email: 'peter@example.com', parentWhatsapp: '+94707176178', class: '10-B', fingerprintId: 7, isEnrolled: true, role: 'student' },
 ];
 
 // Helper to generate time in minutes from hours
@@ -33,26 +35,22 @@ async function seedData() {
         await mongoose.connect(MONGODB_URI);
         console.log('✅ Connected to MongoDB');
 
-        // Clear existing data
-        console.log('🗑️  Clearing existing test data...');
-        const testUsernames = SAMPLE_USERS.map(u => u.username);
-        const testUsers = await User.find({ username: { $in: testUsernames } });
-        const testUserIds = testUsers.map(u => u._id);
-        await Attendance.deleteMany({ user: { $in: testUserIds } });
-        console.log('✅ Cleared attendance data');
+        // Clear ALL existing data first
+        console.log('🗑️  Clearing ALL existing data...');
+        await Attendance.deleteMany({});
+        console.log('✅ Cleared all attendance data');
+        await User.deleteMany({ role: 'student' });
+        console.log('✅ Cleared all student users');
 
-        // Create users if they don't exist
-        console.log('👥 Creating sample users...');
+        // Create fresh users
+        console.log('👥 Creating fresh sample users...');
         const createdUsers = {};
         for (const userData of SAMPLE_USERS) {
-            const user = await User.findOneAndUpdate(
-                { username: userData.username },
-                userData,
-                { upsert: true, new: true }
-            );
+            const user = new User(userData);
+            await user.save();
             createdUsers[userData.username] = user;
         }
-        console.log('✅ Created/Updated users');
+        console.log('✅ Created fresh users');
 
         // Generate attendance data
         console.log('📊 Generating attendance data...');
@@ -127,6 +125,35 @@ async function seedData() {
                 fingerprintId: 5,
                 timestamp: createDateTime(day, Math.floor(arrivalTime), (arrivalTime % 1) * 60),
                 deviceId: 'DEVICE_001',
+                type: 'CHECK_IN'
+            });
+        }
+
+        // User 6 (diana.prince) - VERY PUNCTUAL PATTERN (Always On Time)
+        // Arrives exactly at 8:45-9:00 AM every day
+        for (let day = 30; day >= 1; day--) {
+            if (day % 7 === 0 || day % 7 === 6) continue;
+            const arrivalTime = 8.75 + Math.random() * 0.25; // 8:45 - 9:00
+            attendanceRecords.push({
+                user: createdUsers['diana.prince']._id,
+                fingerprintId: 6,
+                timestamp: createDateTime(day, Math.floor(arrivalTime), (arrivalTime % 1) * 60),
+                deviceId: 'DEVICE_002',
+                type: 'CHECK_IN'
+            });
+        }
+
+        // User 7 (peter.parker) - SPORADIC PATTERN (Unpredictable Schedule)
+        // Very irregular attendance and timing
+        for (let day = 30; day >= 1; day--) {
+            if (day % 7 === 0 || day % 7 === 6) continue;
+            if (Math.random() > 0.7) continue; // Often absent (30% attendance)
+            const arrivalTime = 7.5 + Math.random() * 3; // 7:30 - 10:30
+            attendanceRecords.push({
+                user: createdUsers['peter.parker']._id,
+                fingerprintId: 7,
+                timestamp: createDateTime(day, Math.floor(arrivalTime), (arrivalTime % 1) * 60),
+                deviceId: Math.random() > 0.5 ? 'DEVICE_003' : 'DEVICE_001', // Random device
                 type: 'CHECK_IN'
             });
         }
@@ -216,6 +243,8 @@ async function seedData() {
         console.log('  bob.johnson: Poor Attendance (40% attendance rate)');
         console.log('  alice.williams: Inconsistent (Variable 7:00-11:00 AM)');
         console.log('  charlie.brown: Average (Normal 8:30-9:15 AM)');
+        console.log('  diana.prince: Very Punctual (Exact 8:45-9:00 AM)');
+        console.log('  peter.parker: Sporadic (Unpredictable, 30% attendance)');
         console.log('\n🚨 ANOMALIES INCLUDED:');
         console.log('  ⏰ Very late arrival (john.doe at 11:30 AM)');
         console.log('  📅 Weekend attendance (jane.smith)');
@@ -224,9 +253,9 @@ async function seedData() {
         console.log('  🔄 Multiple entries same day (charlie.brown)');
         console.log('  🌙 Night time entry (jane.smith at 11:45 PM)');
         console.log('\n🎯 EXPECTED CLUSTERS:');
-        console.log('  Cluster 1: Regular/Punctual (john.doe, charlie.brown)');
+        console.log('  Cluster 1: Regular/Punctual (john.doe, charlie.brown, diana.prince)');
         console.log('  Cluster 2: Late/Inconsistent (jane.smith, alice.williams)');
-        console.log('  Cluster 3: Poor Attendance (bob.johnson)');
+        console.log('  Cluster 3: Poor/Sporadic Attendance (bob.johnson, peter.parker)');
         console.log('='.repeat(50));
         console.log('\n✨ Next steps:');
         console.log('  1. Train anomaly model: POST /api/attendance/anomaly-train');

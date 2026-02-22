@@ -19,8 +19,8 @@ router.get('/summary', async (req, res) => {
         const endDate = new Date();
         const startDate = new Date(endDate.getTime() - (daysBack * 24 * 60 * 60 * 1000));
 
-        // Get all employees
-        const users = await User.find({ role: 'employee', isEnrolled: true });
+        // Get all students
+        const users = await User.find({ role: 'student', isEnrolled: true });
 
         // Get attendance data within date range
         const attendanceData = await Attendance.find({
@@ -351,7 +351,7 @@ router.get('/heatmap', async (req, res) => {
         attendanceData.forEach(record => {
             const day = record.timestamp.getDay(); // 0-6 (Sunday-Saturday)
             const hour = record.timestamp.getHours(); // 0-23
-            
+
             const index = day * 24 + hour;
             if (heatmapData[index]) {
                 heatmapData[index].count++;

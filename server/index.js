@@ -6,6 +6,12 @@ import mongoose from 'mongoose';
 // Load environment variables
 dotenv.config();
 
+// Debug: Check if Twilio credentials are loaded
+console.log('🔍 Environment Check:');
+console.log(`   TWILIO_ACCOUNT_SID: ${process.env.TWILIO_ACCOUNT_SID ? 'Set' : 'Missing'}`);
+console.log(`   TWILIO_AUTH_TOKEN: ${process.env.TWILIO_AUTH_TOKEN ? 'Set' : 'Missing'}`);
+console.log(`   TWILIO_WHATSAPP_FROM: ${process.env.TWILIO_WHATSAPP_FROM || 'Missing'}`);
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -34,6 +40,9 @@ import templateSyncService from './services/sync/templateSyncService.js';
 import syncVerificationService from './services/sync/syncVerificationService.js';
 import tailgatingDetection from './services/accessControl/tailgatingDetection.js';
 import occupancyService from './services/occupancy-state/occupancyService.js';
+import recognitionService from './services/pipelines/recognitionService.js';
+import notificationRoutes from './routes/notifications/notificationRoutes.js';
+import whatsappService from './services/notification/whatsappService.js';
 
 // Middleware
 app.use(cors({
@@ -92,6 +101,8 @@ app.use('/api/sync', syncVerificationRoutes);
 app.use('/api/cameras', cameraRoutes);
 // IR Beam Sensor routes (for tailgating detection)
 app.use('/api/ir-beam', irBeamRoutes);
+// Notification routes (WhatsApp, Email, SMS)
+app.use('/api/notifications', notificationRoutes);
 
 // Database Connection
 const connectDB = async () => {
@@ -165,6 +176,7 @@ deviceRegistrationService.setMqttBridge(mqttBridgeService);
 cameraStreamService.setSocketIo(io);
 templateSyncService.setSocketIo(io);
 tailgatingDetection.setSocketIo(io);
+recognitionService.setSocketIo(io);
 
 // Wire alarm event handlers — send TRIGGER_ALARM to EXIT NODE buzzer
 tailgatingDetection.on('tailgatingDetected', (alarm) => {
@@ -263,4 +275,8 @@ app.use((err, req, res, next) => {
 httpServer.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
     console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+
+    // Re-initialize WhatsApp service to ensure environment variables are loaded
+    console.log('🔄 Re-initializing WhatsApp service...');
+    whatsappService.reinitialize();
 });

@@ -211,15 +211,15 @@ const Home = () => {
       </div>
 
       {/* Recent Activity */}
-      {recentActivity.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Activity className="h-5 w-5" />
-              Recent Activity
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Activity className="h-5 w-5" />
+            Recent Activity
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {recentActivity.length > 0 ? (
             <div className="space-y-4">
               {recentActivity.map((activity) => (
                 <div key={activity.id} className="flex items-center justify-between p-4 rounded-xl border bg-card/50 hover:bg-card transition-colors">
@@ -258,10 +258,17 @@ const Home = () => {
                 </div>
               ))}
             </div>
-
-          </CardContent>
-        </Card>
-      )}
+          ) : (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-4">
+                <Activity className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <p className="text-muted-foreground font-medium">No recent activity found</p>
+              <p className="text-sm text-muted-foreground/60">Attendance logs will appear here once scans are detected.</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };

@@ -69,12 +69,7 @@ router.get('/stats', async (req, res) => {
 router.get('/recent-activity', async (req, res) => {
     try {
         const limit = parseInt(req.query.limit) || 10;
-        const now = new Date();
-        const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-
-        const recentActivity = await Attendance.find({
-            timestamp: { $gte: yesterday, $lte: now }
-        })
+        const recentActivity = await Attendance.find({})
             .populate('user', 'username email')
             .sort({ timestamp: -1 })
             .limit(limit);

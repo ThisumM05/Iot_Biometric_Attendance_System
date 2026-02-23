@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": ".."
+		},
+		{
+			"path": "../../PlatformIO/Projects/Biometrics Attendance System"
+		},
+		{
+			"path": "../../PlatformIO/Projects/ENTRY_NODE"
+		}
+	],
+	"settings": {}
+}

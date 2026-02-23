@@ -154,7 +154,7 @@ const TopBar = () => {
     useEffect(() => {
         const fetchUnreadCount = async () => {
             try {
-                const response = await apiService.get('/api/attendance/unread-count');
+                const response = await apiService.get('/attendance/unread-count');
                 if (response.success) {
                     setUnreadCount(response.count);
                 }

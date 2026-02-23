@@ -227,7 +227,7 @@ tailgatingDetection.on('unauthorizedEntry', (alert) => {
 syncVerificationService.initialize(io);
 
 // Initialize Camera WebSocket Server
-cameraStreamService.initialize(httpServer);
+cameraStreamService.initialize(httpServer, io);
 
 // Make Socket.io available to controllers via app
 app.set('io', io);

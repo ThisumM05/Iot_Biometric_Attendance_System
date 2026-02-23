@@ -11,8 +11,57 @@ const SOCKET_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://
  */
 export default function SecurityAlertProvider() {
     const socketRef = useRef(null);
-
+    const audioCtxRef = useRef(null);
     const [activeAlarm, setActiveAlarm] = useState(null);
+    const [isAudioEnabled, setIsAudioEnabled] = useState(true); // Default to on, but needs click
+
+    // Web Audio Alarm Logic
+    useEffect(() => {
+        let interval;
+        if (activeAlarm && isAudioEnabled) {
+            console.log('[SecurityAlert] 🔊 Starting audio alarm pulse');
+
+            if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
+                audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+            }
+
+            if (audioCtxRef.current.state === 'suspended') {
+                audioCtxRef.current.resume();
+            }
+
+            const playPulse = () => {
+                try {
+                    const ctx = audioCtxRef.current;
+                    if (!ctx || ctx.state !== 'running') return;
+
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(950, ctx.currentTime);
+
+                    gain.gain.setValueAtTime(0, ctx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0.4, ctx.currentTime + 0.05);
+                    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.4);
+                } catch (e) {
+                    console.error('[SecurityAlert] Audio Error:', e);
+                }
+            };
+
+            playPulse();
+            interval = setInterval(playPulse, 700);
+        }
+
+        return () => {
+            if (interval) clearInterval(interval);
+        };
+    }, [activeAlarm, isAudioEnabled]);
 
     useEffect(() => {
         const socket = io(SOCKET_URL, {
@@ -30,19 +79,6 @@ export default function SecurityAlertProvider() {
         socket.on('security:alarm', (data) => {
             console.log('[SecurityAlert] 🚨 ALARM:', data);
             setActiveAlarm(data);
-
-            const isTailgating = data.type === 'TAILGATING';
-            const title = isTailgating ? '🚨 Tailgating Detected!' : '🚨 Unauthorized Entry!';
-            const message = data.reason || 'Security breach detected';
-
-            // Play browser notification sound if available
-            try {
-                if ('Notification' in window && Notification.permission === 'granted') {
-                    new Notification(title, { body: message, icon: '/favicon.ico' });
-                }
-            } catch (e) {
-                // Ignore notification errors
-            }
         });
 
         // Listen for alarm stop to dismiss popup automatically
@@ -61,6 +97,17 @@ export default function SecurityAlertProvider() {
         };
     }, []);
 
+    const toggleAudio = (e) => {
+        e.stopPropagation();
+        if (!audioCtxRef.current) {
+            audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtxRef.current.state === 'suspended') {
+            audioCtxRef.current.resume();
+        }
+        setIsAudioEnabled(!isAudioEnabled);
+    };
+
     if (!activeAlarm) return null;
 
     const isTailgating = activeAlarm.type === 'TAILGATING';
@@ -68,78 +115,69 @@ export default function SecurityAlertProvider() {
     const message = activeAlarm.reason || 'Security breach detected';
 
     return (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-red-950/80 backdrop-blur-sm animate-in fade-in duration-300">
-            <div className="relative w-[80vw] h-[80vh] bg-red-600 rounded-3xl shadow-[0_0_100px_rgba(220,38,38,0.8)] border-4 border-red-400 flex flex-col items-center justify-center text-center p-12 overflow-hidden animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-red-950/90 backdrop-blur-md animate-in fade-in duration-300">
+            <div className="relative w-[90vw] h-[85vh] bg-red-600 rounded-[3rem] shadow-[0_0_150px_rgba(220,38,38,1)] border-[6px] border-red-400 flex flex-col items-center justify-center text-center p-12 overflow-hidden animate-in zoom-in-95 duration-200">
                 {/* Flashing background effect */}
-                <div className="absolute inset-0 bg-red-500 opacity-0 animate-[pulse_1s_ease-in-out_infinite]" />
+                <div className="absolute inset-0 bg-red-500 opacity-20 animate-pulse" />
 
-                <div className="relative z-10 flex flex-col items-center gap-8 text-white">
-                    <div className="animate-bounce">
+                <div className="relative z-10 flex flex-col items-center gap-6 text-white w-full max-w-4xl">
+                    <div className="animate-bounce mb-4">
                         {isTailgating ? (
-                            <AlertTriangle className="w-48 h-48 text-yellow-300 drop-shadow-[0_0_20px_rgba(253,224,71,0.8)]" />
+                            <AlertTriangle className="w-56 h-56 text-yellow-300 drop-shadow-[0_0_30px_rgba(253,224,71,0.8)]" />
                         ) : (
-                            <ShieldAlert className="w-48 h-48 text-red-200 drop-shadow-[0_0_20px_rgba(254,202,202,0.8)]" />
+                            <ShieldAlert className="w-56 h-56 text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.6)]" />
                         )}
                     </div>
 
-                    <h1 className="text-6xl font-black uppercase tracking-widest drop-shadow-md">
+                    <h1 className="text-7xl font-black uppercase tracking-tighter leading-none mb-2">
                         {title}
                     </h1>
 
-                    <div className="text-3xl font-medium tracking-wide bg-black/30 px-8 py-4 rounded-xl backdrop-blur-md">
+                    <div className="text-3xl font-bold bg-black/40 px-10 py-5 rounded-2xl border border-white/10 backdrop-blur-md text-red-100">
                         {message}
                     </div>
 
                     {activeAlarm.tailgaters && (
-                        <div className="text-2xl text-red-200 font-bold tracking-wider uppercase mt-4">
-                            {activeAlarm.tailgaters} unauthorized person(s) detected
+                        <div className="text-4xl text-yellow-300 font-extrabold tracking-tight mt-4 drop-shadow-sm">
+                            {activeAlarm.tailgaters} UNAUTHORIZED PEOPLE DETECTED
                         </div>
                     )}
 
-                    {(activeAlarm.clusterId || activeAlarm.deviceId) && (
-                        <div className="flex gap-6 mt-4 opacity-90">
-                            {activeAlarm.clusterId && (
-                                <div className="bg-white/10 px-6 py-3 rounded-lg border border-white/20">
-                                    <span className="text-red-300 text-sm uppercase tracking-widest block mb-1">Cluster</span>
-                                    <span className="text-2xl font-semibold">{activeAlarm.clusterId}</span>
-                                </div>
-                            )}
-                            {activeAlarm.deviceId && (
-                                <div className="bg-white/10 px-6 py-3 rounded-lg border border-white/20">
-                                    <span className="text-red-300 text-sm uppercase tracking-widest block mb-1">Device</span>
-                                    <span className="text-2xl font-mono">{activeAlarm.deviceId}</span>
-                                </div>
-                            )}
-                        </div>
-                    )}
+                    <div className="flex gap-4 mt-8">
+                        <button
+                            onClick={() => setActiveAlarm(null)}
+                            className="px-16 py-8 rounded-2xl bg-white text-red-700 text-4xl font-black uppercase tracking-widest hover:bg-zinc-100 transition-all shadow-2xl active:scale-95"
+                        >
+                            ACKNOWLEDGE
+                        </button>
 
-                    <div className="text-5xl font-mono font-bold tracking-widest mt-8 bg-black/50 px-12 py-6 rounded-2xl shadow-inner tabular-nums">
-                        {new Date(activeAlarm.timestamp || Date.now()).toLocaleTimeString()}
+                        <button
+                            onClick={toggleAudio}
+                            className={`px-8 py-8 rounded-2xl border-4 text-3xl font-black transition-all ${isAudioEnabled
+                                    ? 'bg-green-600 border-green-400 text-white'
+                                    : 'bg-zinc-800 border-zinc-600 text-zinc-400 animate-bounce'
+                                } shadow-2xl active:scale-95`}
+                        >
+                            {isAudioEnabled ? "🔊 SOUND ON" : "🔇 SOUND OFF"}
+                        </button>
                     </div>
 
-                    <button
-                        onClick={() => setActiveAlarm(null)}
-                        className="mt-12 group relative px-12 py-6 overflow-hidden rounded-2xl bg-white text-red-700 text-3xl font-black uppercase tracking-widest hover:bg-red-50 transition-colors shadow-2xl hover:shadow-[0_0_40px_rgba(255,255,255,0.6)] active:scale-95"
-                    >
-                        <span className="relative z-10">Acknowledge</span>
-                        <div className="absolute inset-0 bg-red-100 opacity-0 group-hover:opacity-10 transition-opacity" />
-                    </button>
+                    <div className="mt-12 opacity-50 font-mono text-xl tracking-[0.2em]">
+                        SECURE ZONE • CLUSTER: {activeAlarm.clusterId || 'UNKNOWN'} • {new Date(activeAlarm.timestamp || Date.now()).toLocaleTimeString()}
+                    </div>
                 </div>
 
                 {/* Top Right Close Button */}
                 <button
                     onClick={() => setActiveAlarm(null)}
-                    className="absolute top-8 right-8 z-50 p-2 text-white/50 hover:text-white hover:bg-white/20 rounded-full transition-all active:scale-90 flex items-center justify-center"
-                    title="Close"
+                    className="absolute top-10 right-10 z-50 p-4 text-white/30 hover:text-white hover:bg-white/10 rounded-full transition-all active:scale-90"
                 >
-                    <X className="w-10 h-10" />
+                    <X className="w-12 h-12" />
                 </button>
 
-                {/* Warning stripes decoration */}
-                <div className="absolute top-0 inset-x-0 h-8 bg-[repeating-linear-gradient(45deg,transparent,transparent_20px,rgba(0,0,0,0.2)_20px,rgba(0,0,0,0.2)_40px)]" />
-                <div className="absolute bottom-0 inset-x-0 h-8 bg-[repeating-linear-gradient(45deg,transparent,transparent_20px,rgba(0,0,0,0.2)_20px,rgba(0,0,0,0.2)_40px)]" />
-                <div className="absolute left-0 inset-y-0 w-8 bg-[repeating-linear-gradient(45deg,transparent,transparent_20px,rgba(0,0,0,0.2)_20px,rgba(0,0,0,0.2)_40px)]" />
-                <div className="absolute right-0 inset-y-0 w-8 bg-[repeating-linear-gradient(45deg,transparent,transparent_20px,rgba(0,0,0,0.2)_20px,rgba(0,0,0,0.2)_40px)]" />
+                {/* Warning stripes */}
+                <div className="absolute top-0 inset-x-0 h-10 bg-[repeating-linear-gradient(45deg,transparent,transparent_20px,rgba(0,0,0,0.3)_20px,rgba(0,0,0,0.3)_40px)]" />
+                <div className="absolute bottom-0 inset-x-0 h-10 bg-[repeating-linear-gradient(45deg,transparent,transparent_20px,rgba(0,0,0,0.3)_20px,rgba(0,0,0,0.3)_40px)]" />
             </div>
         </div>
     );

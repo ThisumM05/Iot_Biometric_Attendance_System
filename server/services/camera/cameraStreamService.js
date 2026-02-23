@@ -1,4 +1,6 @@
 import { WebSocketServer } from 'ws';
+import path from 'path';
+import fs from 'fs';
 import Device from '../../models/Device.js';
 import tailgatingDetection from '../accessControl/tailgatingDetection.js';
 import yoloFaceService from '../ml/yoloFaceService.js';
@@ -12,6 +14,7 @@ class CameraStreamService {
         this.totalFramesReceived = 0;
         this.totalFramesProcessed = 0;
         this.lastStatusLog = Date.now();
+        this.debugFrameSaved = false; // Flag to save only one frame
 
         // Listen to tailgating detection events
         this.setupTailgatingListeners();
@@ -20,18 +23,11 @@ class CameraStreamService {
     /**
      * Initialize WebSocket server and load AI models
      */
-    async initialize(httpServer) {
-        // 1. Load AI Models
-        try {
-            await yoloFaceService.loadModel();
-            this.modelsLoaded = true;
-            console.log('✓ YOLOv8-Face Service ready');
-        } catch (error) {
-            console.error('❌ Failed to initialize YOLO service:', error.message);
-        }
+    async initialize(httpServer, io) {
+        this.io = io;
 
-        // 2. Start WebSocket Server
-        // 2. Start WebSocket Server (Manual Upgrade Handling)
+        // 1. Start WebSocket Server (Manual Upgrade Handling)
+        // Register this first so we don't miss connection attempts while AI loads
         this.wss = new WebSocketServer({
             noServer: true
         });
@@ -48,17 +44,32 @@ class CameraStreamService {
             // If it's not /camera/stream, do nothing (Socket.IO handles its own path)
         });
 
+        console.log('✓ Camera WebSocket server initialized on /camera/stream (Manual Upgrade Handler)');
+
+        // 2. Load AI Models (in background or await, but after WSS is ready)
+        try {
+            await yoloFaceService.loadModel();
+            this.modelsLoaded = true;
+            console.log('✓ YOLOv8-Face Service ready');
+        } catch (error) {
+            console.error('❌ Failed to initialize YOLO service:', error.message);
+        }
+
         this.wss.on('connection', (ws, req) => {
-            console.log('📹 Camera WebSocket connected from:', req.socket.remoteAddress);
+            const remoteIp = req.socket.remoteAddress;
+            console.log(`📹 [Binary WS] Camera attempting connection from: ${remoteIp}`);
             let deviceId = null;
 
             ws.on('message', async (data) => {
                 try {
+                    console.log(`📹 [WS Message] Received data type: ${typeof data === 'string' ? 'string' : 'binary/buffer'}, length: ${data.length || 'N/A'}`);
                     if (data instanceof Buffer && data[0] === 0x7B) {
                         const message = JSON.parse(data.toString());
+                        console.log('📹 [WS Message] Detected text/json within buffer:', message.type || message.eventType);
                         await this.handleTextMessage(ws, message, (id) => { deviceId = id; });
                     } else if (typeof data === 'string') {
                         const message = JSON.parse(data);
+                        console.log('📹 [WS Message] Received string message:', message.type || message.eventType);
                         await this.handleTextMessage(ws, message, (id) => { deviceId = id; });
                     } else {
                         // Binary frame
@@ -86,6 +97,7 @@ class CameraStreamService {
 
         switch (messageType) {
             case 'REGISTER':
+                console.log(`📹 [Camera] Registering device: ${message.deviceId} (Camera ID: ${message.cameraId || 'N/A'})`);
                 setDeviceId(message.deviceId);
                 this.cameras.set(message.deviceId, {
                     socket: ws,
@@ -148,8 +160,10 @@ class CameraStreamService {
     }
 
     async handleBinaryFrame(deviceId, frameData) {
+        console.log(`📸 [Binary Entry] Frame arrived for ${deviceId || 'UNKNOWN'}, size: ${frameData.length}`);
         if (!deviceId) {
             console.warn('⚠️ Binary frame received but no deviceId set (REGISTER not received yet)');
+            this.totalFramesReceived++;
             return;
         }
         const camera = this.cameras.get(deviceId);
@@ -161,10 +175,20 @@ class CameraStreamService {
         // Track frame stats
         this.totalFramesReceived++;
 
+        if (this.totalFramesReceived % 20 === 0) {
+            console.log(`📸 [Camera] Frame received from ${deviceId}. Total: ${this.totalFramesReceived}`);
+        }
+
         // Store latest frame
         camera.lastFrame = frameData;
         camera.lastFrameTime = Date.now();
         const frameId = `${deviceId}_${camera.lastFrameTime}`;
+
+        // DEBUG: Save a frame every 100 frames for inspection
+        if (this.totalFramesReceived % 100 === 0) {
+            fs.writeFileSync('debug_frame.jpg', frameData);
+            console.log(`📸 [DEBUG] Camera frame updated: server/debug_frame.jpg (Frame #${this.totalFramesReceived})`);
+        }
 
         // Periodic status log (every 30 seconds)
         if (Date.now() - this.lastStatusLog > 30000) {
@@ -174,11 +198,19 @@ class CameraStreamService {
 
         // SKIP processing if models aren't ready OR if we're already processing a frame for this camera
         // This prevents CPU overload from 10FPS stream
-        if (!this.modelsLoaded || camera.isProcessing) {
-            if (!this.modelsLoaded && this.totalFramesReceived % 100 === 1) {
+        if (!this.modelsLoaded) {
+            if (this.totalFramesReceived % 100 === 1) {
                 console.warn('⚠️ YOLO model not loaded — broadcasting frames with faceCount=0');
             }
             // Just broadcast basic info without face count update
+            this.broadcastFrame(deviceId, camera, frameData, camera.faceCount || 0);
+            return;
+        }
+
+        // Skip if already processing a frame for this camera
+        if (camera.isProcessing) {
+            console.log(`⚠️ Skipping frame for ${deviceId} (still processing previous)`);
+            // Just broadcast basic info without face count update to keep stream alive
             this.broadcastFrame(deviceId, camera, frameData, camera.faceCount || 0);
             return;
         }
@@ -188,7 +220,6 @@ class CameraStreamService {
         // Use YOLO Service
         yoloFaceService.detect(frameData).then(detectedFaces => {
             camera.faceCount = detectedFaces;
-            camera.isProcessing = false;
             this.totalFramesProcessed++;
 
             if (detectedFaces > 0) {
@@ -206,7 +237,8 @@ class CameraStreamService {
             // Broadcast update
             this.broadcastFrame(deviceId, camera, frameData, detectedFaces);
         }).catch(err => {
-            console.error('❌ Face detection error:', err.message);
+            console.error(`❌ Face detection error for ${deviceId}:`, err.message);
+        }).finally(() => {
             camera.isProcessing = false;
         });
     }
@@ -214,14 +246,17 @@ class CameraStreamService {
     broadcastFrame(deviceId, camera, frameData, faceCount) {
         if (this.io) {
             const connectedSockets = this.io.engine?.clientsCount || 0;
+            if (this.totalFramesReceived % 20 === 0) {
+                console.log(`📡 [Socket] Broadcasting camera:frame for ${deviceId} (Clients: ${connectedSockets})`);
+            }
             this.io.emit('camera:frame', {
                 deviceId: deviceId,
                 cameraId: camera.cameraId,
                 timestamp: camera.lastFrameTime,
                 frameSize: frameData.length,
                 faceCount: faceCount
-                // frameBuffer removed - frontend uses direct stream
             });
+            console.log(`[Socket Trace] Emitted frame for ${deviceId}`);
         }
     }
 

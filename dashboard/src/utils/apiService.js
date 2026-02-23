@@ -58,6 +58,30 @@ class ApiService {
         }
     }
 
+    async get(endpoint, options = {}) {
+        return this.request(endpoint, { ...options, method: 'GET' });
+    }
+
+    async post(endpoint, body, options = {}) {
+        return this.request(endpoint, {
+            ...options,
+            method: 'POST',
+            body: body ? JSON.stringify(body) : undefined
+        });
+    }
+
+    async put(endpoint, body, options = {}) {
+        return this.request(endpoint, {
+            ...options,
+            method: 'PUT',
+            body: body ? JSON.stringify(body) : undefined
+        });
+    }
+
+    async delete(endpoint, options = {}) {
+        return this.request(endpoint, { ...options, method: 'DELETE' });
+    }
+
     /**
      * Login user
      * @param {string} username 
